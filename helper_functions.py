@@ -72,7 +72,7 @@ def simulator(theta, model = 'angle', n_samples = 1000, bin_dim = None):
         x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
                           boundary_fun = bf.weibull_cdf, 
                           boundary_multiplicative = True, 
-                          boundary_params = {'alpha': [4], 'beta': [5]}, 
+                          boundary_params = {'alpha': theta[4], 'beta': theta[5]}, 
                           n_samples = n_samples)
     
     if model == 'levy':
@@ -137,10 +137,11 @@ def simulator_condition_effects(n_conditions = 4,
     param_base = np.tile(np.random.uniform(low = config[model]['param_bounds'][0],
                                            high = config[model]['param_bounds'][1], 
                                            size = (1, len(config[model]['params']))),
-                                           (n_conditions, len(config[model]['params'])))
+                                           (n_conditions, 1))
                          
-                         
+    #len(config[model]['params']                   
     #print(param_base)
+    gt = {}
     for i in range(n_conditions):
         for c_eff in condition_effect_on_param:
             id_tmp = config[model]['params'].index(c_eff)
@@ -148,7 +149,15 @@ def simulator_condition_effects(n_conditions = 4,
             print(config[model]['param_bounds'][0])
             param_base[i, id_tmp] = np.random.uniform(low = config[model]['param_bounds'][0][id_tmp], 
                                                       high = config[model]['param_bounds'][1][id_tmp])
+            gt[c_eff + '(' + str(i) + ')'] = param_base[i, id_tmp]
     
+    for param in config[model]['params']:
+        if param in condition_effect_on_param:
+            pass
+        else:
+            id_tmp = config[model]['params'].index(param)
+            gt[param] = param_base[0, id_tmp]
+            
     #print(param_base)
     dataframes = []
     for i in range(n_conditions):
@@ -161,8 +170,8 @@ def simulator_condition_effects(n_conditions = 4,
     
     data_out = pd.concat(dataframes)
     data_out = data_out.rename(columns = {'subj_idx': "condition"})
-    
-    return (data_out, param_base)
+    # print(param_base.shape)
+    return (data_out, gt, param_base)
    
 def hddm_preprocess(simulator_data = None, subj_id = 0):
     
@@ -200,10 +209,10 @@ def hddm_preprocess_hierarchical(model = None, datasetid = 0):
         gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = ['v','a','z','t'])
         gt_global_means = pd.DataFrame(np.array([data[0][2][datasetid]]), columns = ['v', 'a', 'z', 't'])
     
-    elif model == 'weibull':
-        gt_subj = pd.DataFrame(data[0][0][datasetid], columns = ['v','a','z','t','alpha','beta'])
-        gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = ['v','a','z','t','alpha','beta'])
-        gt_global_means = pd.DataFrame(np.array(data[0][2][datasetid]), columns = ['v', 'a', 'z', 't', 'alpha', 'beta'])    
+    elif model == 'weibull_cdf':
+        gt_subj = pd.DataFrame(data[0][0][datasetid], columns = ['v', 'a', 'z', 't', 'alpha', 'beta'])
+        gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = ['v', 'a', 'z', 't', 'alpha', 'beta'])
+        gt_global_means = pd.DataFrame(np.array([data[0][2][datasetid]]), columns = ['v', 'a', 'z', 't', 'alpha', 'beta'])    
     return (df, gt_subj, gt_global_sds, gt_global_means)
 
 def _make_trace_plotready(hddm_trace = None, model = ''):
@@ -231,19 +240,51 @@ def _make_trace_plotready_hierarchical(hddm_trace = None, model = ''):
                   }
     
     subj_l = []
-    for key in my_traces.keys():
+    for key in hddm_trace.keys():
         if '_subj' in key:
             subj_l.append(int(float(key[-3:])))
 
-    dat = np.zeros((max(subj_l) + 1, my_traces.shape[0], len(param_order[model])))
-    for key in my_traces.keys():
+    dat = np.zeros((max(subj_l) + 1, hddm_trace.shape[0], len(param_order[model])))
+    for key in hddm_trace.keys():
         if '_subj' in key:
             id_tmp = int(float(key[-3:]))
             if '_trans' in key:
-                val_tmp = 1 / ( 1 + np.exp(- my_traces[key]))
+                val_tmp = 1 / ( 1 + np.exp(- hddm_trace[key]))
             else:
-                val_tmp = my_traces[key]
+                val_tmp = hddm_trace[key]
             dat[id_tmp, : ,param_order[model].index(key[:key.find('_')])] = val_tmp   
+            
+    return dat
+
+def _make_trace_plotready_condition(hddm_trace = None, model = ''):
+    param_order = {'ddm': ['v', 'a', 'z', 't'],
+                   'angle': ['v', 'a', 'z', 't', 'theta'],
+                   'weibull_cdf': ['v', 'a', 'z', 't', 'alpha', 'beta'],
+                  }
+    cond_l = []
+    for key in hddm_trace.keys():
+        if '(' in key:
+            cond_l.append(int(float(key[-2])))
+    
+    dat = np.zeros((max(cond_l) + 1, hddm_trace.shape[0], len(param_order[model])))
+                   
+    for key in hddm_trace.keys():
+        if '(' in key:
+            id_tmp = int(float(key[-2]))
+            if '_trans' in key:
+                val_tmp = 1 / ( 1 + np.exp(- hddm_trace[key]))
+            else:
+                val_tmp = hddm_trace[key]
+            
+            dat[id_tmp, : ,param_order[model].index(key[:key.find('(')])] = val_tmp   
+        else:
+            if '_trans' in key:
+                val_tmp = 1 / ( 1 + np.exp(- hddm_trace[key]))
+                key = key[:key.find('_trans')]
+            else:
+                val_tmp = hddm_trace[key]
+                   
+            dat[:, :, param_order[model].index(key)] = val_tmp
             
     return dat
 
@@ -260,24 +301,35 @@ def model_plot(posterior_samples = None,
                samples_by_param = 10,
                max_t = 5,
                input_hddm_trace = False,
+               datatype = 'single_subject', # 'hierarchical', 'single_subject', 'condition'
                show_model = True):
     
     # Inputs are hddm_traces --> make plot ready
     if input_hddm_trace and posterior_samples is not None:
-        if hierarchical:
+        if datatype == 'hierarchical':
             posterior_samples = _make_trace_plotready_hierarchical(posterior_samples, 
                                                                    model = model)
-        else:
+            n_plots = posterior_samples.shape[0]
+#             print(posterior_samples)
+            
+        if datatype == 'single_subject':
             posterior_samples = _make_trace_plotready(posterior_samples, 
                                                       model = model)
+        if datatype == 'condition':
+            posterior_samples = _make_trace_plotready_condition(posterior_samples, 
+                                                                model = model)
             n_plots = posterior_samples.shape[0]
+            #print(posterior_samples)
+            #n_plots = posterior_samples.shape[0]
 
     
     # Taking care of special case with 1 plot
+    print(n_plots)
     if n_plots == 1:
         ground_truths = np.expand_dims(ground_truths, 0)
         posterior_samples = np.expand_dims(posterior_samples, 0)
-    
+#         print(ground_truths)
+#         print(ground_truths.shape)
     
     plot_titles = {'ddm': 'DDM', 
                    'angle': 'ANGLE',
@@ -769,7 +821,7 @@ def model_plot(posterior_samples = None,
 def caterpillar_plot(trace = [],
                      gt = [],
                      model = 'angle',
-                     hierarchical = True,
+                     datatype = 'hierarchical', # 'hierarchical', 'single_subject', 'condition'
                      drop_sd = True):
     
     sns.set(style = "white", 
@@ -789,7 +841,7 @@ def caterpillar_plot(trace = [],
     gt_dict = {}
     cnt = 0
     
-    if not hierarchical:
+    if datatype == 'single_subject':
         if model == 'ddm':
             for v in ['v', 'a', 'z', 't']:
                 gt_dict[v] = gt[cnt]
@@ -804,14 +856,23 @@ def caterpillar_plot(trace = [],
             for v in ['v', 'a', 'z', 't', 'theta']:
                 gt_dict[v] = gt[cnt]
                 cnt += 1
-    else:
+    if datatype == 'hierarchical':
+        tmp = {}
+        tmp['subj'] = gt[1]
+        tmp['global_means'] = gt[2]
+        tmp['global_sds'] = gt[3]
+        gt = tmp
+        
         gt_dict = {}
         for param in gt['subj'].keys():
-            for i in range(gt_subj.shape[0]):
+            for i in range(gt['subj'].shape[0]):
                 gt_dict[param + '_subj.' + str(i) + '.0'] = gt['subj'][param][i]
-
         for param in gt['global_means'].keys():
             gt_dict[param] = gt['global_means'][param][0]
+            
+    if datatype == 'condition':
+        gt_dict = gt
+        
             
     ecdfs = {}
     plot_vals = {} # [0.01, 0.9], [0.01, 0.99], [mean]
@@ -866,314 +927,3 @@ def caterpillar_plot(trace = [],
 #         if show:
 #             return #plt.show(block = False)
 
-def posterior_predictive_plot(ax_titles = [], 
-                              title = 'POSTERIOR PREDICTIVES: ',
-                              x_labels = [],
-                              posterior_samples = [],
-                              ground_truths = [],
-                              cols = 3,
-                              model = 'angle',
-                              data_signature = '',
-                              train_data_type = '',
-                              n_post_params = 100,
-                              samples_by_param = 10,
-                              save = False,
-                              show = False,
-                              machine = 'home',
-                              method = 'cnn'):
-    
-    ax_titles = {'ddm': ['v', 'a' 'z', 'ndt'],
-                 'angle': ['v', 'a', 'z', 'ndt', 'theta'],
-                 'full_ddm': ['v', 'a', 'z', 'ndt', 'dw', 'sdv', 'dndt'],
-                 'weibull_cdf': ['v', 'a', 'z' , 'ndt', 'alpha', 'beta'],
-                 'levy': ['v', 'a', 'z', 'ndt', 'alpha'],
-                 'ornstein': ['v', 'a', 'z', 'g', 'ndt'],
-                 'ddm_sdv': ['v', 'a', 'z', 'ndt', 'sdv'],
-                }
-    
-    rows = int(np.ceil(len(ax_titles) / cols))
-    sns.set(style = "white", 
-            palette = "muted", 
-            color_codes = True,
-            font_scale = 1)
-
-    fig, ax = plt.subplots(rows, cols, 
-                           figsize = (12, 12), 
-                           sharex = False, 
-                           sharey = False)
-    fig.suptitle(title + model.upper(), fontsize = 24)
-    sns.despine(right = True)
-
-    for i in range(len(ax_titles)):
-        row_tmp = int(np.floor(i / cols))
-        col_tmp = i - (cols * row_tmp)
-        
-        post_tmp = np.zeros((n_post_params * samples_by_param, 2))
-        idx = np.random.choice(posterior_samples.shape[1], size = n_post_params, replace = False)
-
-        # Run Model simulations for posterior samples
-        for j in range(n_post_params):
-            if model == 'ddm':
-                out = cds.ddm_flexbound(v = posterior_samples[i, idx[j], 0],
-                                        a = posterior_samples[i, idx[j], 1],
-                                        w = posterior_samples[i, idx[j], 2],
-                                        ndt = posterior_samples[i, idx[j], 3],
-                                        s = 1,
-                                        delta_t = 0.001,
-                                        max_t = 20, 
-                                        n_samples = samples_by_param,
-                                        print_info = False,
-                                        boundary_fun = bf.constant,
-                                        boundary_multiplicative = True,
-                                        boundary_params = {})
-                
-            if model == 'full_ddm' or model == 'full_ddm2':
-                out = cds.full_ddm(v = posterior_samples[i, idx[j], 0],
-                                   a = posterior_samples[i, idx[j], 1],
-                                   w = posterior_samples[i, idx[j], 2],
-                                   ndt = posterior_samples[i, idx[j], 3],
-                                   dw = posterior_samples[i, idx[j], 4],
-                                   sdv = posterior_samples[i, idx[j], 5],
-                                   dndt = posterior_samples[i, idx[j], 6],
-                                   s = 1,
-                                   delta_t = 0.001,
-                                   max_t = 20,
-                                   n_samples = samples_by_param,
-                                   print_info = False,
-                                   boundary_fun = bf.constant,
-                                   boundary_multiplicative = True,
-                                   boundary_params = {})
-
-            if model == 'angle' or model == 'angle2':
-                out = cds.ddm_flexbound(v = posterior_samples[i, idx[j], 0],
-                                        a = posterior_samples[i, idx[j], 1],
-                                        w = posterior_samples[i, idx[j], 2],
-                                        ndt = posterior_samples[i, idx[j], 3],
-                                        s = 1,
-                                        delta_t = 0.001, 
-                                        max_t = 20,
-                                        n_samples = samples_by_param,
-                                        print_info = False,
-                                        boundary_fun = bf.angle,
-                                        boundary_multiplicative = False,
-                                        boundary_params = {'theta': posterior_samples[i, idx[j], 4]})
-            
-            if model == 'weibull_cdf' or model == 'weibull_cdf2':
-                out = cds.ddm_flexbound(v = posterior_samples[i, idx[j], 0],
-                                        a = posterior_samples[i, idx[j], 1],
-                                        w = posterior_samples[i, idx[j], 2],
-                                        ndt = posterior_samples[i, idx[j], 3],
-                                        s = 1,
-                                        delta_t = 0.001, 
-                                        max_t = 20,
-                                        n_samples = samples_by_param,
-                                        print_info = False,
-                                        boundary_fun = bf.weibull_cdf,
-                                        boundary_multiplicative = True,
-                                        boundary_params = {'alpha': posterior_samples[i, idx[j], 4],
-                                                           'beta': posterior_samples[i, idx[j], 5]})
-            if model == 'levy':
-                out = cds.levy_flexbound(v = posterior_samples[i, idx[j], 0],
-                                         a = posterior_samples[i, idx[j], 1],
-                                         w = posterior_samples[i, idx[j], 2],
-                                         alpha_diff = posterior_samples[i, idx[j], 3],
-                                         ndt = posterior_samples[i, idx[j], 4],
-                                         s = 1,
-                                         delta_t = 0.001,
-                                         max_t = 20,
-                                         n_samples = samples_by_param,
-                                         print_info = False,
-                                         boundary_fun = bf.constant,
-                                         boundary_multiplicative = True, 
-                                         boundary_params = {})
-            
-            if model == 'ornstein':
-                out = cds.ornstein_uhlenbeck(v = posterior_samples[i, idx[j], 0],
-                                             a = posterior_samples[i, idx[j], 1],
-                                             w = posterior_samples[i, idx[j], 2],
-                                             g = posterior_samples[i, idx[j], 3],
-                                             ndt = posterior_samples[i, idx[j], 4],
-                                             s = 1,
-                                             delta_t = 0.001, 
-                                             max_t = 20,
-                                             n_samples = samples_by_param,
-                                             print_info = False,
-                                             boundary_fun = bf.constant,
-                                             boundary_multiplicative = True,
-                                             boundary_params = {})
-            if model == 'ddm_sdv':
-                out = cds.ddm_sdv(v = posterior_samples[i, idx[j], 0],
-                                  a = posterior_samples[i, idx[j], 1],
-                                  w = posterior_samples[i, idx[j], 2],
-                                  ndt = posterior_samples[i, idx[j], 3],
-                                  sdv = posterior_samples[i, idx[j], 4],
-                                  s = 1,
-                                  delta_t = 0.001,
-                                  max_t = 20,
-                                  n_samples = samples_by_param,
-                                  print_info = False,
-                                  boundary_fun = bf.constant,
-                                  boundary_multiplicative = True,
-                                  boundary_params = {})
-            
-            post_tmp[(samples_by_param * j):(samples_by_param * (j + 1)), :] = np.concatenate([out[0], out[1]], axis = 1)
-        
-        # Run Model simulations for true parameters
-        if model == 'ddm':
-            out = cds.ddm_flexbound(v = ground_truths[i, 0],
-                                    a = ground_truths[i, 1],
-                                    w = ground_truths[i, 2],
-                                    ndt = ground_truths[i, 3],
-                                    s = 1,
-                                    delta_t = 0.001,
-                                    max_t = 20, 
-                                    n_samples = 20000,
-                                    print_info = False,
-                                    boundary_fun = bf.constant,
-                                    boundary_multiplicative = True,
-                                    boundary_params = {})
-
-        if model == 'full_ddm' or model == 'full_ddm2':
-            out = cds.full_ddm(v = ground_truths[i, 0],
-                               a = ground_truths[i, 1],
-                               w = ground_truths[i, 2],
-                               ndt = ground_truths[i, 3],
-                               dw = ground_truths[i, 4],
-                               sdv = ground_truths[i, 5],
-                               dndt = ground_truths[i, 6],
-                               s = 1,
-                               delta_t = 0.001,
-                               max_t = 20,
-                               n_samples = 20000,
-                               print_info = False,
-                               boundary_fun = bf.constant,
-                               boundary_multiplicative = True,
-                               boundary_params = {})
-
-        if model == 'angle' or model == 'angle2':
-            out = cds.ddm_flexbound(v = ground_truths[i, 0],
-                                    a = ground_truths[i, 1],
-                                    w = ground_truths[i, 2],
-                                    ndt = ground_truths[i, 3],
-                                    s = 1,
-                                    delta_t = 0.001, 
-                                    max_t = 20,
-                                    n_samples = 20000,
-                                    print_info = False,
-                                    boundary_fun = bf.angle,
-                                    boundary_multiplicative = False,
-                                    boundary_params = {'theta': ground_truths[i, 4]})
-
-        if model == 'weibull_cdf' or model == 'weibull_cdf2':
-            out = cds.ddm_flexbound(v = ground_truths[i, 0],
-                                    a = ground_truths[i, 1],
-                                    w = ground_truths[i, 2],
-                                    ndt = ground_truths[i, 3],
-                                    s = 1,
-                                    delta_t = 0.001, 
-                                    max_t = 20,
-                                    n_samples = 20000,
-                                    print_info = False,
-                                    boundary_fun = bf.weibull_cdf,
-                                    boundary_multiplicative = True,
-                                    boundary_params = {'alpha': ground_truths[i, 4],
-                                                       'beta': ground_truths[i, 5]})
-        if model == 'levy':
-            out = cds.levy_flexbound(v = ground_truths[i, 0],
-                                     a = ground_truths[i, 1],
-                                     w = ground_truths[i, 2],
-                                     alpha_diff = ground_truths[i, 3],
-                                     ndt = ground_truths[i, 4],
-                                     s = 1,
-                                     delta_t = 0.001,
-                                     max_t = 20,
-                                     n_samples = 20000,
-                                     print_info = False,
-                                     boundary_fun = bf.constant,
-                                     boundary_multiplicative = True, 
-                                     boundary_params = {})
-
-        if model == 'ornstein':
-            out = cds.ornstein_uhlenbeck(v = ground_truths[i, 0],
-                                         a = ground_truths[i, 1],
-                                         w = ground_truths[i, 2],
-                                         g = ground_truths[i, 3],
-                                         ndt = ground_truths[i, 4],
-                                         s = 1,
-                                         delta_t = 0.001, 
-                                         max_t = 20,
-                                         n_samples = 20000,
-                                         print_info = False,
-                                         boundary_fun = bf.constant,
-                                         boundary_multiplicative = True,
-                                         boundary_params ={})
-            
-        if model == 'ddm_sdv':
-            out = cds.ddm_sdv(v = ground_truths[i, 0],
-                              a = ground_truths[i, 1],
-                              w = ground_truths[i, 2],
-                              ndt = ground_truths[i, 3],
-                              sdv = ground_truths[i, 4],
-                              s = 1,
-                              delta_t = 0.001,
-                              max_t = 20,
-                              n_samples = 20000,
-                              print_info = False,
-                              boundary_fun = bf.constant,
-                              boundary_multiplicative = True,
-                              boundary_params = {})
-        
-        gt_tmp = np.concatenate([out[0], out[1]], axis = 1)
-        print('passed through')
-            
-        sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                     bins = 50, 
-                     kde = False, 
-                     rug = False, 
-                     hist_kws = {'alpha': 1, 'color': 'black', 'fill': 'black', 'density': 1, 'edgecolor': 'black'},
-                     ax = ax[row_tmp, col_tmp]);
-        sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
-                     hist_kws = {'alpha': 0.5, 'color': 'grey', 'fill': 'grey', 'density': 1, 'edgecolor': 'grey'}, 
-                     bins = 50, 
-                     kde = False, 
-                     rug = False,
-                     ax = ax[row_tmp, col_tmp])
-        
-        
-        if row_tmp == 0 and col_tmp == 0:
-            ax[row_tmp, col_tmp].legend(labels = [model, 'posterior'], 
-                                        fontsize = 12, loc = 'upper right')
-        
-        if row_tmp == (rows - 1):
-            ax[row_tmp, col_tmp].set_xlabel('RT', 
-                                            fontsize = 14);
-        
-        if col_tmp == 0:
-            ax[row_tmp, col_tmp].set_ylabel('Density', 
-                                            fontsize = 14);
-        
-        ax[row_tmp, col_tmp].set_title(ax_titles[i],
-                                       fontsize = 16)
-        ax[row_tmp, col_tmp].tick_params(axis = 'y', size = 12)
-        ax[row_tmp, col_tmp].tick_params(axis = 'x', size = 12)
-        
-    for i in range(len(ax_titles), rows * cols, 1):
-        row_tmp = int(np.floor(i / cols))
-        col_tmp = i - (cols * row_tmp)
-        ax[row_tmp, col_tmp].axis('off')
-
-    #plt.setp(ax, yticks = [])
-    if save == True:
-        if machine == 'home':
-            fig_dir = "/users/afengler/OneDrive/git_repos/nn_likelihoods/figures/" + method + "/posterior_predictive"
-            if not os.path.isdir(fig_dir):
-                os.mkdir(fig_dir)
-                
-        figure_name = 'posterior_predictive_'
-        #plt.tight_layout()
-        plt.subplots_adjust(top = 0.9)
-        plt.subplots_adjust(hspace = 0.3, wspace = 0.3)
-        plt.savefig(fig_dir + '/' + figure_name + model + data_signature + '_' + train_data_type + '.png', dpi = 300) #  bbox_inches = 'tight')
-        plt.close()
-    if show:
-        return #plt.show(block = False)
