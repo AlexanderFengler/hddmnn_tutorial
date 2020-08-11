@@ -826,14 +826,14 @@ def caterpillar_plot(posterior_samples = [],
     return plt.show()
 
 # Posterior Pair Plot
-def make_posterior_pair_grid(posterior_samples = [],
-                             axes_limits = 'model', # 'model', 'samples'
-                             height = 10,
-                             aspect = 1,
-                             n_subsample = 1000,
-                             gt_available = False,
-                             gt = [],
-                             model = None):
+def posterior_pair_plot(posterior_samples = [],
+                        axes_limits = 'model', # 'model', 'samples'
+                        height = 10,
+                        aspect = 1,
+                        n_subsample = 1000,
+                        gt_available = False,
+                        gt = [],
+                        model = None):
     
     # some preprocessing
     posterior_samples = posterior_samples.get_traces().copy()
