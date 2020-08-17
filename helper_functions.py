@@ -105,7 +105,7 @@ def make_parameter_sets(model = 'weibull_cdf',
 
 def simulator(theta, 
               model = 'angle', 
-              n_samples = 1000, 
+              n_samples = 1000,
               bin_dim = None):
     
     # Useful for sbi
@@ -324,7 +324,8 @@ def _make_trace_plotready_condition(hddm_trace = None, model = ''):
 def model_plot(posterior_samples = None,
                ground_truths = [],
                cols = 3,
-               model = 'weibull_cdf',
+               model_gt = 'weibull_cdf',
+               model_fitted = 'angle',
                n_post_params = 500,
                n_plots = 4,
                samples_by_param = 10,
@@ -337,16 +338,16 @@ def model_plot(posterior_samples = None,
     if input_hddm_trace and posterior_samples is not None:
         if datatype == 'hierarchical':
             posterior_samples = _make_trace_plotready_hierarchical(posterior_samples, 
-                                                                   model = model)
+                                                                   model = model_fitted)
             n_plots = posterior_samples.shape[0]
 #             print(posterior_samples)
             
         if datatype == 'single_subject':
             posterior_samples = _make_trace_plotready_single_subject(posterior_samples, 
-                                                                     model = model)
+                                                                     model = model_fitted)
         if datatype == 'condition':
             posterior_samples = _make_trace_plotready_condition(posterior_samples, 
-                                                                model = model)
+                                                                model = model_fitted)
             n_plots = posterior_samples.shape[0]
             #print(posterior_samples)
             #n_plots = posterior_samples.shape[0]
@@ -368,7 +369,7 @@ def model_plot(posterior_samples = None,
                   }
     
     title = 'Model Plot: '
-    ax_titles = config[model]['params']
+    ax_titles = config[model_gt]['params']
 
     rows = int(np.ceil(n_plots / cols))
 
@@ -382,10 +383,11 @@ def model_plot(posterior_samples = None,
                            sharex = False, 
                            sharey = False)
     
-    my_suptitle = fig.suptitle(title + plot_titles[model], fontsize = 40)
+    my_suptitle = fig.suptitle(title + plot_titles[model_gt], fontsize = 40)
     sns.despine(right = True)
     
     t_s = np.arange(0, max_t, 0.01)
+    
     for i in range(n_plots):
         row_tmp = int(np.floor(i / cols))
         col_tmp = i - (cols * row_tmp)
@@ -393,6 +395,9 @@ def model_plot(posterior_samples = None,
         if rows > 1 and cols > 1:
             ax[row_tmp, col_tmp].set_xlim(0, max_t)
             ax[row_tmp, col_tmp].set_ylim(-2, 2)
+        elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+            ax[i].set_xlim(0, max_t)
+            ax[i].set_ylim(-2, 2)
         else:
             ax.set_xlim(0, max_t)
             ax.set_ylim(-2, 2)
@@ -400,7 +405,7 @@ def model_plot(posterior_samples = None,
         # Run simulations and add histograms
         # True params
         out = simulator(theta = ground_truths[i, :],
-                        model = model, 
+                        model = model_gt, 
                         n_samples = 20000,
                         bin_dim = None)
              
@@ -414,7 +419,7 @@ def model_plot(posterior_samples = None,
 
             for j in range(n_post_params):
                 out = simulator(theta = posterior_samples[i, idx[j], :],
-                                model = model,
+                                model = model_fitted,
                                 n_samples = samples_by_param,
                                 bin_dim = None)
                                 
@@ -423,6 +428,8 @@ def model_plot(posterior_samples = None,
          #ax.set_ylim(-4, 2)
         if rows > 1 and cols > 1:
             ax_tmp = ax[row_tmp, col_tmp].twinx()
+        elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+            ax_tmp = ax[i].twinx()
         else:
             ax_tmp = ax.twinx()
         
@@ -435,10 +442,10 @@ def model_plot(posterior_samples = None,
 
 
             counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
-                                        bins = np.linspace(0, 10, 100))
+                                        bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
-                                          bins = np.linspace(0, 10, 100),
+                                          bins = np.linspace(0, max_t, 100),
                                           density = True)
             
             if j == (n_post_params - 1) and row_tmp == 0 and col_tmp == 0:
@@ -463,10 +470,10 @@ def model_plot(posterior_samples = None,
                             zorder = -1)
                         
         counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
-                                bins = np.linspace(0, 10, 100))
+                                bins = np.linspace(0, max_t, 100))
 
         counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
-                                      bins = np.linspace(0, 10, 100),
+                                      bins = np.linspace(0, max_t, 100),
                                       density = True)
         
         if row_tmp == 0 and col_tmp == 0:
@@ -493,6 +500,8 @@ def model_plot(posterior_samples = None,
         #ax.invert_xaxis()
         if rows > 1 and cols > 1:
             ax_tmp = ax[row_tmp, col_tmp].twinx()
+        elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+            ax_tmp = ax[i].twinx()
         else:
             ax_tmp = ax.twinx()
             
@@ -501,10 +510,10 @@ def model_plot(posterior_samples = None,
         
         if posterior_samples is not None:
             counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
-                            bins = np.linspace(0, 10, 100))
+                            bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
-                                          bins = np.linspace(0, 10, 100),
+                                          bins = np.linspace(0, max_t, 100),
                                           density = True)
             ax_tmp.hist(bins[:-1], 
                         bins, 
@@ -516,10 +525,10 @@ def model_plot(posterior_samples = None,
                         zorder = -1)
         
         counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
-                                bins = np.linspace(0, 10, 100))
+                                bins = np.linspace(0, max_t, 100))
     
         counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
-                                      bins = np.linspace(0, 10, 100),
+                                      bins = np.linspace(0, max_t, 100),
                                       density = True)
         ax_tmp.hist(bins[:-1], 
                     bins, 
@@ -534,14 +543,14 @@ def model_plot(posterior_samples = None,
         if show_model:
             if posterior_samples is not None:
                 for j in range(n_post_params):
-                    if model == 'weibull_cdf' or model == 'weibull_cdf2':
+                    if model_fitted == 'weibull_cdf' or model_fitted == 'weibull_cdf2':
                         b = posterior_samples[i, idx[j], 1] * bf.weibull_cdf(t = t_s, 
                                                                              alpha = posterior_samples[i, idx[j], 4],
                                                                              beta = posterior_samples[i, idx[j], 5])
-                    if model == 'angle' or model == 'angle2':
+                    if model_fitted == 'angle' or model_fitted == 'angle2':
                         b = np.maximum(posterior_samples[i, idx[j], 1] + bf.angle(t = t_s, 
                                                                                   theta = posterior_samples[i, idx[j], 4]), 0)
-                    if model == 'ddm':
+                    if model_fitted == 'ddm':
                         b = posterior_samples[i, idx[j], 1] * np.ones(t_s.shape[0])
 
 
@@ -555,6 +564,11 @@ def model_plot(posterior_samples = None,
                                                   t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
                                                   alpha = 0.05,
                                                   zorder = 1000)
+                    elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+                        ax[i].plot(t_s + posterior_samples[i, idx[j], 3], b, 'black',
+                                   t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
+                                   alpha = 0.05,
+                                   zorder = 1000)
                     else:
                         ax.plot(t_s + posterior_samples[i, idx[j], 3], b, 'black',
                                 t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
@@ -580,6 +594,19 @@ def model_plot(posterior_samples = None,
                                                       alpha = 0.05,
                                                       zorder = 1000,
                                                       label = 'Model Samples')
+                    elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+                        ax[i].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
+                                   start_point_tmp + slope_tmp * t_s[:maxid], 
+                                   'black', 
+                                   alpha = 0.05,
+                                   zorder = 1000)
+                        if j == (n_post_params - 1):
+                            ax[i].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
+                                       start_point_tmp + slope_tmp * t_s[:maxid], 
+                                       'black', 
+                                       alpha = 0.05,
+                                       zorder = 1000,
+                                       label = 'Model Samples')
 
                     else:
                         ax.plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
@@ -598,12 +625,19 @@ def model_plot(posterior_samples = None,
                             
                     if rows > 1 and cols > 1:
                         ax[row_tmp, col_tmp].axvline(x = posterior_samples[i, idx[j], 3], 
-                                                     ymin = -2, 
+                                                     ymin = - 2, 
                                                      ymax = 2, 
                                                      c = 'black', 
                                                      linestyle = '--',
                                                      alpha = 0.05)
                         
+                    elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+                        ax[i].axvline(x = posterior_samples[i, idx[j], 3],
+                                                     ymin = - 2,
+                                                     ymax = 2,
+                                                     c = 'black',
+                                                     linestyle = '--',
+                                                     alpha = 0.05)
                     else:
                         ax.axvline(x = posterior_samples[i, idx[j], 3], 
                                    ymin = -2, 
@@ -614,15 +648,15 @@ def model_plot(posterior_samples = None,
                             
         # Plot ground_truths bounds
         if show_model:
-            if model == 'weibull_cdf' or model == 'weibull_cdf2':
+            if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2':
                 b = ground_truths[i, 1] * bf.weibull_cdf(t = t_s,
                                                          alpha = ground_truths[i, 4],
                                                          beta = ground_truths[i, 5])
 
-            if model == 'angle' or model == 'angle2':
+            if model_gt == 'angle' or model_gt == 'angle2':
                 b = np.maximum(ground_truths[i, 1] + bf.angle(t = t_s, theta = ground_truths[i, 4]), 0)
 
-            if model == 'ddm':
+            if model_gt == 'ddm':
                 b = ground_truths[i, 1] * np.ones(t_s.shape[0])
 
             start_point_tmp = - ground_truths[i, 1] + \
@@ -643,6 +677,25 @@ def model_plot(posterior_samples = None,
                     ax[row_tmp, col_tmp].legend()
                 else:
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths[i, 3], b, 'red', 
+                              t_s + ground_truths[i, 3], -b, 'red', 
+                              alpha = 1,
+                              linewidth = 3,
+                              zorder = 1000)
+                    
+            elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+                if row_tmp == 0 and col_tmp == 0:
+                    ax[i].plot(t_s + ground_truths[i, 3], b, 'red', 
+                                              alpha = 1, 
+                                              linewidth = 3, 
+                                              zorder = 1000)
+                    ax[i].plot(t_s + ground_truths[i, 3], -b, 'red', 
+                                              alpha = 1,
+                                              linewidth = 3,
+                                              zorder = 1000, 
+                                              label = 'Grund Truth Model')
+                    ax[i].legend()
+                else:
+                    ax[i].plot(t_s + ground_truths[i, 3], b, 'red', 
                               t_s + ground_truths[i, 3], -b, 'red', 
                               alpha = 1,
                               linewidth = 3,
@@ -680,7 +733,16 @@ def model_plot(posterior_samples = None,
 
                 ax[row_tmp, col_tmp].set_zorder(ax_tmp.get_zorder() + 1)
                 ax[row_tmp, col_tmp].patch.set_visible(False)
+            elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+                ax[i].plot(t_s[:maxid] + ground_truths[i, 3], 
+                                          start_point_tmp + slope_tmp * t_s[:maxid], 
+                                          'red', 
+                                          alpha = 1, 
+                                          linewidth = 3, 
+                                          zorder = 1000)
 
+                ax[i].set_zorder(ax_tmp.get_zorder() + 1)
+                ax[i].patch.set_visible(False)
             else:
                 ax.plot(t_s[:maxid] + ground_truths[i, 3], 
                         start_point_tmp + slope_tmp * t_s[:maxid], 
@@ -714,7 +776,24 @@ def model_plot(posterior_samples = None,
             # Some extra styling:
             ax[row_tmp, col_tmp].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
             ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+        
+        elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
+            if row_tmp == rows:
+                ax[i].set_xlabel('rt', 
+                                 fontsize = 20);
+            ax[i].set_ylabel('', 
+                             fontsize = 20);
 
+            ax[i].set_title(title_tmp,
+                            fontsize = 24)
+            
+            ax[i].tick_params(axis = 'y', size = 20)
+            ax[i].tick_params(axis = 'x', size = 20)
+
+            # Some extra styling:
+            ax[i].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+            ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+        
         else:
             if row_tmp == rows:
                 ax.set_xlabel('rt', 
@@ -731,7 +810,6 @@ def model_plot(posterior_samples = None,
             # Some extra styling:
             ax.axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
             ax.axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
-
     
     if rows > 1 and cols > 1:
         for i in range(n_plots, rows * cols, 1):
@@ -763,31 +841,35 @@ def caterpillar_plot(posterior_samples = [],
     sns.despine(right = True)
     
     trace = posterior_samples.copy()
-    gt = ground_truths.copy()
-    gt_dict = {}
-    cnt = 0
     
-    if datatype == 'single_subject':
-        for v in config[model]['params']:
-            gt_dict[v] = gt[cnt]
-            cnt += 1
-
-    if datatype == 'hierarchical':
-        tmp = {}
-        tmp['subj'] = gt[1]
-        tmp['global_means'] = gt[2]
-        tmp['global_sds'] = gt[3]
-        gt = tmp
-        
+    
+    
+    if ground_truths is not None:
+        cnt = 0
+        ground_truths = ground_truths.copy()
         gt_dict = {}
-        for param in gt['subj'].keys():
-            for i in range(gt['subj'].shape[0]):
-                gt_dict[param + '_subj.' + str(i) + '.0'] = gt['subj'][param][i]
-        for param in gt['global_means'].keys():
-            gt_dict[param] = gt['global_means'][param][0]
-            
-    if datatype == 'condition':
-        gt_dict = gt
+        
+        if datatype == 'single_subject':
+            for v in config[model]['params']:
+                gt_dict[v] = ground_truths[cnt]
+                cnt += 1
+
+        if datatype == 'hierarchical':
+            tmp = {}
+            tmp['subj'] = ground_truths[1]
+            tmp['global_means'] = ground_truths[2]
+            tmp['global_sds'] = ground_truths[3]
+            ground_truths = tmp
+
+            gt_dict = {}
+            for param in ground_truths['subj'].keys():
+                for i in range(ground_truths['subj'].shape[0]):
+                    gt_dict[param + '_subj.' + str(i) + '.0'] = ground_truths['subj'][param][i]
+            for param in ground_truths['global_means'].keys():
+                gt_dict[param] = ground_truths['global_means'][param][0]
+
+        if datatype == 'condition':
+            gt_dict = ground_truths
              
     ecdfs = {}
     plot_vals = {} # [0.01, 0.9], [0.01, 0.99], [mean]
@@ -821,7 +903,8 @@ def caterpillar_plot(posterior_samples = [],
     for k in plot_vals.keys():
         ax.plot(plot_vals[k][1], [k, k], c = 'grey', zorder = -1, linewidth = 5)
         ax.plot(plot_vals[k][0] , [k, k], c = 'black', zorder = -1)
-        ax.scatter(gt_dict[k], k,  c = 'red', marker = "|")
+        if ground_truths is not None:
+            ax.scatter(gt_dict[k], k,  c = 'red', marker = "|")
 
     return plt.show()
 
@@ -831,8 +914,8 @@ def posterior_pair_plot(posterior_samples = [],
                         height = 10,
                         aspect = 1,
                         n_subsample = 1000,
-                        gt_available = False,
-                        gt = [],
+                        ground_truths_available = False,
+                        ground_truths = [],
                         model = None):
     
     # some preprocessing
@@ -882,17 +965,17 @@ def posterior_pair_plot(posterior_samples = [],
                                  fontsize = 24)
     
     # If ground truth is available add it in:
-    if gt_available:
+    if ground_truths_available:
         for i in range(g.axes.shape[0]):
             for j in range(i + 1, g.axes.shape[0], 1):
-                g.axes[j,i].plot(gt[config[model]['params'].index(xlabels[i])], 
-                                 gt[config[model]['params'].index(ylabels[j])], 
+                g.axes[j,i].plot(ground_truths[config[model]['params'].index(xlabels[i])], 
+                                 ground_truths[config[model]['params'].index(ylabels[j])], 
                                  '.', 
                                  color = 'red',
                                  markersize = 10)
 
         for i in range(g.axes.shape[0]):
-            g.axes[i,i].plot(gt[i],
+            g.axes[i,i].plot(ground_truths[i],
                              g.axes[i,i].get_ylim()[0], 
                              '.', 
                              color = 'red',
