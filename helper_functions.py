@@ -822,7 +822,7 @@ def model_plot(posterior_samples = None,
     return plt.show()
 
 def caterpillar_plot(posterior_samples = [],
-                     ground_truths = [],
+                     ground_truths = None,
                      model = 'angle',
                      datatype = 'hierarchical', # 'hierarchical', 'single_subject', 'condition'
                      drop_sd = True):
@@ -841,7 +841,6 @@ def caterpillar_plot(posterior_samples = [],
     sns.despine(right = True)
     
     trace = posterior_samples.copy()
-    
     
     
     if ground_truths is not None:
@@ -914,7 +913,6 @@ def posterior_pair_plot(posterior_samples = [],
                         height = 10,
                         aspect = 1,
                         n_subsample = 1000,
-                        ground_truths_available = False,
                         ground_truths = [],
                         model = None):
     
@@ -965,7 +963,7 @@ def posterior_pair_plot(posterior_samples = [],
                                  fontsize = 24)
     
     # If ground truth is available add it in:
-    if ground_truths_available:
+    if ground_truths is not None:
         for i in range(g.axes.shape[0]):
             for j in range(i + 1, g.axes.shape[0], 1):
                 g.axes[j,i].plot(ground_truths[config[model]['params'].index(xlabels[i])], 
