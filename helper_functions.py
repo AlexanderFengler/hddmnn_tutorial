@@ -115,7 +115,11 @@ def simulator(theta,
         theta = theta.numpy()
     
     if model == 'ddm':
-        x = ddm(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], n_samples = n_samples)
+        x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
+                          n_samples = n_samples,
+                          boundary_fun = bf.constant,
+                          boundary_multiplicative = True,
+                          boundary_params = {})
     
     if model == 'angle':
         x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
@@ -674,7 +678,7 @@ def model_plot(posterior_samples = None,
                                               linewidth = 3,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
-                    ax[row_tmp, col_tmp].legend()
+                    ax[row_tmp, col_tmp].legend(loc = 'upper right')
                 else:
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths[i, 3], b, 'red', 
                               t_s + ground_truths[i, 3], -b, 'red', 
@@ -693,7 +697,7 @@ def model_plot(posterior_samples = None,
                                               linewidth = 3,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
-                    ax[i].legend()
+                    ax[i].legend(loc = 'upper right')
                 else:
                     ax[i].plot(t_s + ground_truths[i, 3], b, 'red', 
                               t_s + ground_truths[i, 3], -b, 'red', 
