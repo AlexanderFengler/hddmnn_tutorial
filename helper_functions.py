@@ -115,7 +115,15 @@ def simulator(theta,
         theta = theta.numpy()
     
     if model == 'ddm':
-        x = ddm(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], n_samples = n_samples)
+        x = ddm_flexbound(v = theta[0], 
+                          a = theta[1], 
+                          w = theta[2], 
+                          ndt = theta[3], 
+                          n_samples = n_samples,
+                          boundary_multiplicative = False,
+                          boundary_params = {},
+                          boundary_fun = bf.constant)
+                                             
     
     if model == 'angle':
         x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
@@ -187,8 +195,8 @@ def simulator_condition_effects(n_conditions = 4,
     for i in range(n_conditions):
         for c_eff in condition_effect_on_param:
             id_tmp = config[model]['params'].index(c_eff)
-            print(id_tmp)
-            print(config[model]['param_bounds'][0])
+            #print(id_tmp)
+            #print(config[model]['param_bounds'][0])
             param_base[i, id_tmp] = np.random.uniform(low = config[model]['param_bounds'][0][id_tmp], 
                                                       high = config[model]['param_bounds'][1][id_tmp])
             gt[c_eff + '(' + str(i) + ')'] = param_base[i, id_tmp]
@@ -710,9 +718,9 @@ def model_plot(posterior_samples = None,
                         linewidth = 3,
                         zorder = 1000,
                         label = 'Ground Truth Model')
-                print('passed through legend part')
-                print(row_tmp)
-                print(col_tmp)
+                #print('passed through legend part')
+                #print(row_tmp)
+                #print(col_tmp)
                 ax.legend(loc = 'upper right')
 
             # Ground truth slope:
@@ -845,7 +853,7 @@ def caterpillar_plot(posterior_samples = [],
     
     if ground_truths is not None:
         cnt = 0
-        ground_truths = ground_truths.copy()
+        #ground_truths = ground_truths.copy()
         gt_dict = {}
         
         if datatype == 'single_subject':
@@ -856,8 +864,9 @@ def caterpillar_plot(posterior_samples = [],
         if datatype == 'hierarchical':
             tmp = {}
             tmp['subj'] = ground_truths[1]
-            tmp['global_means'] = ground_truths[2]
-            tmp['global_sds'] = ground_truths[3]
+            tmp['global_sds'] = ground_truths[2]
+            tmp['global_means'] = ground_truths[3]
+
             ground_truths = tmp
 
             gt_dict = {}
@@ -917,7 +926,7 @@ def posterior_pair_plot(posterior_samples = [],
                         model = None):
     
     # some preprocessing
-    posterior_samples = posterior_samples.get_traces().copy()
+    #posterior_samples = posterior_samples.get_traces().copy()
     posterior_samples['z'] = 1 / ( 1 + np.exp(- posterior_samples['z_trans']))
     posterior_samples = posterior_samples.drop('z_trans', axis = 1)
 
