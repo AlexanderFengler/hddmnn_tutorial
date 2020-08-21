@@ -17,4 +17,6 @@ drive.mount('/content/gdrive')`
 
 6. Select the file *hddmnn_tutorial.ipynb* and run it in a new *colab notebook*
 
+7. In the *upper left* menu click on **Runtime**, then **Change runtime type** and select **GPU** as **hardware accelerator**
+
 You are ready to follow the tutorial now... 
