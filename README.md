@@ -1,6 +1,7 @@
 # hddmnn_tutorial
 
 Welcome to the **HDDMNN Tutorial**. Execute the instructions below to follow the tutorial in your own *google colab notebook*.
+**Slides** for the *theory part* are in the file *hddm_nn_tutorial_slides.pdf*. 
 
 ### Installation instructions:
 
