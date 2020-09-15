@@ -49,17 +49,6 @@ def weibull_cdf(t = 1,
 #     else:
 #         return 1
 
-# # Weibull: (additive)
-# def weibull_bnd(t = 1,
-#                 node = 1,
-#                 shape = 1.01,
-#                 scale = 1,
-#                 theta = 0):
-#     if t >= node:
-#         return (shape / scale) * np.power((t - node) / scale, shape - 1) * np.exp( - np.power((t - node) / scale, shape))
-#     else:
-#         return 0
-
 # # Logistic (additive)
 # def logistic_bound(t = 1,
 #                    node = 1,

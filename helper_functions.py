@@ -6,6 +6,7 @@ import argparse
 import sys
 import pickle
 from statsmodels.distributions.empirical_distribution import ECDF
+from scipy.stats import truncnorm
 
 
 sys.path.append('simulators')
@@ -102,7 +103,6 @@ def make_parameter_sets(model = 'weibull_cdf',
                                            
     return pd.DataFrame(parameter_data, columns = config[model]['params'])
 
-
 def simulator(theta, 
               model = 'angle', 
               n_samples = 1000,
@@ -120,55 +120,82 @@ def simulator(theta,
                           w = theta[2], 
                           ndt = theta[3], 
                           n_samples = n_samples,
-                          boundary_multiplicative = False,
+                          boundary_multiplicative = True,
                           boundary_params = {},
                           boundary_fun = bf.constant)
                                              
     
     if model == 'angle':
-        x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
+        x = ddm_flexbound(v = theta[0],
+                          a = theta[1], 
+                          w = theta[2], 
+                          ndt = theta[3], 
                           boundary_fun = bf.angle, 
                           boundary_multiplicative = False,
                           boundary_params = {'theta': theta[4]}, 
                           n_samples = n_samples)
     
     if model == 'weibull_cdf':
-        x = ddm_flexbound(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], 
+        x = ddm_flexbound(v = theta[0], 
+                          a = theta[1], 
+                          w = theta[2], 
+                          ndt = theta[3], 
                           boundary_fun = bf.weibull_cdf, 
                           boundary_multiplicative = True, 
                           boundary_params = {'alpha': theta[4], 'beta': theta[5]}, 
                           n_samples = n_samples)
     
     if model == 'levy':
-        x = levy_flexbound(v = theta[0], a = theta[1], w = theta[2], alpha_diff = theta[3], ndt = theta[4], 
+        x = levy_flexbound(v = theta[0], 
+                           a = theta[1], 
+                           w = theta[2], 
+                           alpha_diff = theta[3], 
+                           ndt = theta[4], 
                            boundary_fun = bf.constant, 
                            boundary_multiplicative = True, 
                            boundary_params = {}, 
                            n_samples = n_samples)
     
     if model == 'full_ddm':
-        x = full_ddm(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], dw = theta[4], sdv = theta[5], dndt = theta[6], 
+        x = full_ddm(v = theta[0],
+                     a = theta[1], 
+                     w = theta[2], 
+                     ndt = theta[3],
+                     dw = theta[4], 
+                     sdv = theta[5],
+                     dndt = theta[6], 
                      boundary_fun = bf.constant, 
                      boundary_multiplicative = True, 
                      boundary_params = {}, 
                      n_samples = n_samples)
 
     if model == 'ddm_sdv':
-        x = ddm_sdv(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3], sdv = theta[4],
+        x = ddm_sdv(v = theta[0], 
+                    a = theta[1], 
+                    w = theta[2], 
+                    ndt = theta[3],
+                    sdv = theta[4],
                     boundary_fun = bf.constant,
                     boundary_multiplicative = True, 
                     boundary_params = {},
                     n_samples = n_samples)
         
     if model == 'ornstein_uhlenbeck':
-        x = ornstein_uhlenbeck(v = theta[0], a = theta[1], w = theta[2], g = theta[3], ndt = theta[4],
+        x = ornstein_uhlenbeck(v = theta[0], 
+                               a = theta[1], 
+                               w = theta[2], 
+                               g = theta[3], 
+                               ndt = theta[4],
                                boundary_fun = bf.constant,
                                boundary_multiplicative = True,
                                boundary_params = {},
                                n_samples = n_samples)
 
     if model == 'pre':
-        x = ddm_flexbound_pre(v = theta[0], a = theta[1], w = theta[2], ndt = theta[3],
+        x = ddm_flexbound_pre(v = theta[0], 
+                              a = theta[1], 
+                              w = theta[2], 
+                              ndt = theta[3],
                               boundary_fun = bf.angle,
                               boundary_multiplicative = False,
                               boundary_params = {'theta': theta[4]},
@@ -222,7 +249,56 @@ def simulator_condition_effects(n_conditions = 4,
     data_out = data_out.rename(columns = {'subj_idx': "condition"})
     # print(param_base.shape)
     return (data_out, gt, param_base)
-   
+
+def simulator_hierarchical(n_subjects = 5,
+                           n_samples_by_subject = 10,
+                           model = 'angle'):
+
+    param_ranges_half = (np.array(config[model]['param_bounds'][1]) - np.array(config[model]['param_bounds'][0])) / 2
+    
+    global_stds = np.random.uniform(low = 0.01, 
+                                    high = param_ranges_half / 6,
+                                    size = (1, len(config[model]['param_bounds'][0])))
+    
+    global_means = np.random.uniform(low = config[model]['param_bounds'][0],
+                                     high = config[model]['param_bounds'][1],
+                                     size = (1, len(config[model]['param_bounds'][0])))
+                                    
+    
+    dataframes = []
+    subject_parameters = np.zeros((n_subjects, 
+                                   len(config[model]['param_bounds'][0])))
+    gt = {}
+    
+    for param in config[model]['params']:
+        id_tmp = config[model]['params'].index(param)
+        gt[param] = global_means[0, id_tmp]
+        gt[param + '_std'] = global_stds[0, id_tmp]
+    
+    for i in range(n_subjects):
+        
+        # Get subject parameters
+        a = (config[model]['param_bounds'][0] - global_means[0, :]) / global_stds[0, :]
+        b = (config[model]['param_bounds'][1] - global_means[0, :]) / global_stds[0, :]
+        
+        subject_parameters[i, :] = np.float32(global_means[0, :] + (truncnorm.rvs(a, b, size = global_stds.shape[1]) * global_stds[0, :]))
+        
+        sim_out = simulator(subject_parameters[i, :],
+                            model = model,
+                            n_samples = n_samples_by_subject,
+                            bin_dim = None)
+        
+        dataframes.append(hddm_preprocess(simulator_data = sim_out, 
+                                          subj_id = i))
+        
+        for param in config[model]['params']:
+            id_tmp = config[model]['params'].index(param)
+            gt[param + '_subj.' + str(i)] = subject_parameters[i, id_tmp]
+        
+    data_out = pd.concat(dataframes)
+    
+    return (data_out, gt, subject_parameters)                 
+                         
 def hddm_preprocess(simulator_data = None, subj_id = 0):
     
     df = pd.DataFrame(simulator_data[0].astype(np.double), columns = ['rt'])
@@ -230,39 +306,7 @@ def hddm_preprocess(simulator_data = None, subj_id = 0):
     df['nn_response'] = df['response']
     df.loc[df['response'] == -1.0, 'response'] = 0.0
     df['subj_idx'] = subj_id
-    
     return df
-
-def hddm_preprocess_hierarchical(model = None, datasetid = 0):
-
-    data = pickle.load(open('data_storage/' + model + '_tutorial_nsubj_5_n_1000.pickle', 'rb'))
-    n_parti = data[1].shape[2]
-    masterlist = []
-    df = pd.DataFrame(columns = ['rt', 'response'])
-    
-    for j in range(n_parti):
-        masterlist.append(pd.DataFrame(data[1][0][datasetid][j], columns = ['rt', 'response']))
-        masterlist[j].insert(0,'subj_idx',j)
-        df = df.append(masterlist[j], ignore_index = True, sort = True)
-    
-    df['nn_response'] = df['response']
-    df.loc[df['response'] == -1.0, 'response'] = 0.0
-    
-    if model == 'angle':
-        gt_subj = pd.DataFrame(data[0][0][datasetid], columns = config[model]['params'])
-        gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = config[model]['params'])
-        gt_global_means = pd.DataFrame(np.array([data[0][2][datasetid]]), columns = config[model]['params'])
-    
-    elif model == 'ddm':
-        gt_subj = pd.DataFrame(data[0][0][datasetid], columns = config[model]['params'])
-        gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = config[model]['params'])
-        gt_global_means = pd.DataFrame(np.array([data[0][2][datasetid]]), columns = config[model]['params'])
-    
-    elif model == 'weibull_cdf':
-        gt_subj = pd.DataFrame(data[0][0][datasetid], columns = config[model]['params'])
-        gt_global_sds = pd.DataFrame(np.array([data[0][1][datasetid]]), columns = config[model]['params'])
-        gt_global_means = pd.DataFrame(np.array([data[0][2][datasetid]]), columns = config[model]['params'])    
-    return (df, gt_subj, gt_global_sds, gt_global_means)
 
 def _make_trace_plotready_single_subject(hddm_trace = None, model = ''):
     
@@ -422,7 +466,7 @@ def model_plot(posterior_samples = None,
         
         if posterior_samples is not None:
             # Run Model simulations for posterior samples
-            tmp_post = np.zeros((n_post_params*samples_by_param, 2))
+            tmp_post = np.zeros((n_post_params * samples_by_param, 2))
             idx = np.random.choice(posterior_samples.shape[1], size = n_post_params, replace = False)
 
             for j in range(n_post_params):
@@ -431,7 +475,7 @@ def model_plot(posterior_samples = None,
                                 n_samples = samples_by_param,
                                 bin_dim = None)
                                 
-                tmp_post[(10 * j):(10 * (j + 1)), :] = np.concatenate([out[0], out[1]], axis = 1)
+                tmp_post[(samples_by_param * j):(samples_by_param * (j + 1)), :] = np.concatenate([out[0], out[1]], axis = 1)
         
          #ax.set_ylim(-4, 2)
         if rows > 1 and cols > 1:
@@ -862,19 +906,20 @@ def caterpillar_plot(posterior_samples = [],
                 cnt += 1
 
         if datatype == 'hierarchical':
-            tmp = {}
-            tmp['subj'] = ground_truths[1]
-            tmp['global_sds'] = ground_truths[2]
-            tmp['global_means'] = ground_truths[3]
+            gt_dict = ground_truths
+#             tmp = {}
+#             tmp['subj'] = ground_truths[1]
+#             tmp['global_sds'] = ground_truths[2]
+#             tmp['global_means'] = ground_truths[3]
 
-            ground_truths = tmp
+#             ground_truths = tmp
 
-            gt_dict = {}
-            for param in ground_truths['subj'].keys():
-                for i in range(ground_truths['subj'].shape[0]):
-                    gt_dict[param + '_subj.' + str(i) + '.0'] = ground_truths['subj'][param][i]
-            for param in ground_truths['global_means'].keys():
-                gt_dict[param] = ground_truths['global_means'][param][0]
+#             gt_dict = {}
+#             for param in ground_truths['subj'].keys():
+#                 for i in range(ground_truths['subj'].shape[0]):
+#                     gt_dict[param + '_subj.' + str(i) + '.0'] = ground_truths['subj'][param][i]
+#             for param in ground_truths['global_means'].keys():
+#                 gt_dict[param] = ground_truths['global_means'][param][0]
 
         if datatype == 'condition':
             gt_dict = ground_truths
