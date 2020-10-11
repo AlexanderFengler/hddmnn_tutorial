@@ -386,7 +386,10 @@ def model_plot(posterior_samples = None,
                input_hddm_trace = False,
                datatype = 'single_subject', # 'hierarchical', 'single_subject', 'condition'
                show_model = True,
-               ylimit = 2):
+               ylimit = 2,
+               posterior_linewidth = 3,
+               gt_linewidth = 3,
+               hist_linewidth = 3):
     
     # Inputs are hddm_traces --> make plot ready
     if input_hddm_trace and posterior_samples is not None:
@@ -524,7 +527,8 @@ def model_plot(posterior_samples = None,
                             color = 'black',
                             edgecolor = 'black',
                             zorder = -1,
-                            label = 'Posterior Predictive')
+                            label = 'Posterior Predictive',
+                            linewidth = hist_linewidth)
                 
             else:
                 ax_tmp.hist(bins[:-1], 
@@ -534,6 +538,7 @@ def model_plot(posterior_samples = None,
                             alpha = 0.5, 
                             color = 'black',
                             edgecolor = 'black',
+                            linewidth = hist_linewidth,
                             zorder = -1)
                         
         
@@ -554,6 +559,7 @@ def model_plot(posterior_samples = None,
                             color = 'red',
                             edgecolor = 'red',
                             zorder = -1,
+                            linewidth = hist_linewidth,
                             label = 'Ground Truth Data')
                 ax_tmp.legend(loc = 'lower right')
             else:
@@ -564,7 +570,8 @@ def model_plot(posterior_samples = None,
                         alpha = 0.5, 
                         color = 'red',
                         edgecolor = 'red',
-                        zorder = -1)
+                        zorder = -1,
+                        linewidth = hist_linewidth)
         
         if ground_truths_data is not None:
             counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == 1, 0],
@@ -583,6 +590,7 @@ def model_plot(posterior_samples = None,
                             color = 'blue',
                             edgecolor = 'blue',
                             zorder = -1,
+                            linewidth = hist_linewidth,
                             label = 'Dataset')
                 ax_tmp.legend(loc = 'lower right')
             else:
@@ -593,6 +601,7 @@ def model_plot(posterior_samples = None,
                         alpha = 0.5, 
                         color = 'blue',
                         edgecolor = 'blue',
+                        linewidth = hist_linewidth,
                         zorder = -1)
             
             
@@ -622,6 +631,7 @@ def model_plot(posterior_samples = None,
                         alpha = 0.5, 
                         color = 'black',
                         edgecolor = 'black',
+                        linewidth = hist_linewidth,
                         zorder = -1)
             
         if model_gt is not None:
@@ -638,6 +648,7 @@ def model_plot(posterior_samples = None,
                         alpha = 0.5, 
                         color = 'red',
                         edgecolor = 'red',
+                        linewidth = hist_linewidth,
                         zorder = -1)
         
         
@@ -658,6 +669,7 @@ def model_plot(posterior_samples = None,
                         alpha = 0.5, 
                         color = 'blue',
                         edgecolor = 'blue',
+                        linewidth = hist_linewidth,
                         zorder = -1)
 
         
@@ -685,17 +697,20 @@ def model_plot(posterior_samples = None,
                         ax[row_tmp, col_tmp].plot(t_s + posterior_samples[i, idx[j], 3], b, 'black',
                                                   t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
                                                   alpha = 0.05,
-                                                  zorder = 1000)
+                                                  zorder = 1000,
+                                                  linewidth = posterior_linewidth,)
                     elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                         ax[i].plot(t_s + posterior_samples[i, idx[j], 3], b, 'black',
                                    t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
                                    alpha = 0.05,
-                                   zorder = 1000)
+                                   zorder = 1000,
+                                   linewidth = posterior_linewidth,)
                     else:
                         ax.plot(t_s + posterior_samples[i, idx[j], 3], b, 'black',
                                 t_s + posterior_samples[i, idx[j], 3], - b, 'black', 
                                 alpha = 0.05,
-                                zorder = 1000)
+                                zorder = 1000,
+                                linewidth = posterior_linewidth)
 
                     for m in range(len(t_s)):
                         if (start_point_tmp + (slope_tmp * t_s[m])) > b[m] or (start_point_tmp + (slope_tmp * t_s[m])) < -b[m]:
@@ -706,27 +721,33 @@ def model_plot(posterior_samples = None,
                     if rows > 1 and cols > 1:
                         ax[row_tmp, col_tmp].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
                                                   start_point_tmp + slope_tmp * t_s[:maxid], 
-                                                  'black', 
+                                                  c = 'black', 
                                                   alpha = 0.05,
-                                                  zorder = 1000)
+                                                  zorder = 1000,
+                                                  linewidth = posterior_linewidth,)
                         if j == (n_post_params - 1):
                             ax[row_tmp, col_tmp].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
                                                       start_point_tmp + slope_tmp * t_s[:maxid], 
-                                                      'black', 
+                                                      c = 'black', 
                                                       alpha = 0.05,
                                                       zorder = 1000,
+                                                      linewidth = posterior_linewidth,
                                                       label = 'Model Samples')
+                            
                     elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                         ax[i].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
                                    start_point_tmp + slope_tmp * t_s[:maxid], 
                                    'black', 
                                    alpha = 0.05,
-                                   zorder = 1000)
+                                   zorder = 1000,
+                                   linewidth = posterior_linewidth)
+                        
                         if j == (n_post_params - 1):
                             ax[i].plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
                                        start_point_tmp + slope_tmp * t_s[:maxid], 
-                                       'black', 
+                                       c = 'black', 
                                        alpha = 0.05,
+                                       linewidth = posterior_linewidth,
                                        zorder = 1000,
                                        label = 'Model Samples')
 
@@ -735,12 +756,14 @@ def model_plot(posterior_samples = None,
                                 start_point_tmp + slope_tmp * t_s[:maxid], 
                                 'black', 
                                 alpha = 0.05,
+                                linewidth = posterior_linewidth,
                                 zorder = 1000)
-                        if j ==(n_post_params - 1):
+                        if j == (n_post_params - 1):
                             ax.plot(t_s[:maxid] + posterior_samples[i, idx[j], 3],
                                     start_point_tmp + slope_tmp * t_s[:maxid], 
                                     'black', 
                                     alpha = 0.05,
+                                    linewidth = posterior_linewidth,
                                     zorder = 1000,
                                     label = 'Model Samples')
                             
@@ -751,21 +774,24 @@ def model_plot(posterior_samples = None,
                                                      ymax = 2, 
                                                      c = 'black', 
                                                      linestyle = '--',
+                                                     linewidth = posterior_linewidth,
                                                      alpha = 0.05)
                         
                     elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                         ax[i].axvline(x = posterior_samples[i, idx[j], 3],
-                                                     ymin = - 2,
-                                                     ymax = 2,
-                                                     c = 'black',
-                                                     linestyle = '--',
-                                                     alpha = 0.05)
+                                                            ymin = - 2,
+                                                            ymax = 2,
+                                                            c = 'black',
+                                                            linestyle = '--',
+                                                            linewidth = posterior_linewidth,
+                                                            alpha = 0.05)
                     else:
                         ax.axvline(x = posterior_samples[i, idx[j], 3], 
                                    ymin = -2, 
                                    ymax = 2, 
                                    c = 'black', 
                                    linestyle = '--',
+                                   linewidth = posterior_linewidth,
                                    alpha = 0.05)
                             
         # Plot ground_truths bounds
@@ -789,7 +815,7 @@ def model_plot(posterior_samples = None,
                 if row_tmp == 0 and col_tmp == 0:
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                                               alpha = 1, 
-                                              linewidth = 3, 
+                                              linewidth = gt_linewidth, 
                                               zorder = 1000)
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                                               alpha = 1,
@@ -801,18 +827,18 @@ def model_plot(posterior_samples = None,
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                               t_s + ground_truths_parameters[i, 3], -b, 'red', 
                               alpha = 1,
-                              linewidth = 3,
+                              linewidth = gt_linewidth,
                               zorder = 1000)
                     
             elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                 if row_tmp == 0 and col_tmp == 0:
                     ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                                               alpha = 1, 
-                                              linewidth = 3, 
+                                              linewidth = gt_linewidth, 
                                               zorder = 1000)
                     ax[i].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                                               alpha = 1,
-                                              linewidth = 3,
+                                              linewidth = gt_linewidth,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
                     ax[i].legend()
@@ -820,16 +846,16 @@ def model_plot(posterior_samples = None,
                     ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                               t_s + ground_truths_parameters[i, 3], -b, 'red', 
                               alpha = 1,
-                              linewidth = 3,
+                              linewidth = gt_linewidth,
                               zorder = 1000)
             else:
                 ax.plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                         alpha = 1, 
-                        linewidth = 3, 
+                        linewidth = gt_linewidth, 
                         zorder = 1000)
                 ax.plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                         alpha = 1,
-                        linewidth = 3,
+                        linewidth = gt_linewidth,
                         zorder = 1000,
                         label = 'Ground Truth Model')
                 #print('passed through legend part')
@@ -850,7 +876,7 @@ def model_plot(posterior_samples = None,
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
                                           'red', 
                                           alpha = 1, 
-                                          linewidth = 3, 
+                                          linewidth = gt_linewidth, 
                                           zorder = 1000)
 
                 ax[row_tmp, col_tmp].set_zorder(ax_tmp.get_zorder() + 1)
@@ -860,7 +886,7 @@ def model_plot(posterior_samples = None,
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
                                           'red', 
                                           alpha = 1, 
-                                          linewidth = 3, 
+                                          linewidth = gt_linewidth, 
                                           zorder = 1000)
 
                 ax[i].set_zorder(ax_tmp.get_zorder() + 1)
@@ -870,7 +896,7 @@ def model_plot(posterior_samples = None,
                         start_point_tmp + slope_tmp * t_s[:maxid], 
                         'red', 
                         alpha = 1, 
-                        linewidth = 3, 
+                        linewidth = gt_linewidth, 
                         zorder = 1000)
 
                 ax.set_zorder(ax_tmp.get_zorder() + 1)
@@ -961,7 +987,9 @@ def posterior_predictive_plot(posterior_samples = None,
                               n_post_params = 100,
                               max_t = 20,
                               samples_by_param = 10,
-                              xlimit = 10):
+                              xlimit = 10,
+                              bin_size = 0.025,
+                              hist_linewidth = 3):
     
     
 #                 counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
@@ -993,7 +1021,7 @@ def posterior_predictive_plot(posterior_samples = None,
         rows = 1
         cols = 1
     
-    
+    nbins = int((2 * max_t) / bin_size)
         # Taking care of special case with 1 plot
     if n_plots == 1:
         if model_gt is not None:
@@ -1062,14 +1090,15 @@ def posterior_predictive_plot(posterior_samples = None,
         if rows > 1 and cols > 1:
             
             sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
                          kde = False, 
                          rug = False, 
                          hist_kws = {'alpha': 1, 
                                      'color': 'black',
                                      'histtype': 'step', 
                                      'density': 1, 
-                                     'edgecolor': 'black'},
+                                     'edgecolor': 'black',
+                                     'linewidth': hist_linewidth},
                          ax = ax[row_tmp, col_tmp]);
 
             sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
@@ -1077,8 +1106,9 @@ def posterior_predictive_plot(posterior_samples = None,
                                      'color': gt_color, 
                                      'density': 1, 
                                      'edgecolor': gt_color,  
-                                     'histtype': 'step'}, 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
+                                     'histtype': 'step',
+                                     'linewidth': hist_linewidth}, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
                          kde = False, 
                          rug = False,
                          ax = ax[row_tmp, col_tmp])
@@ -1086,14 +1116,15 @@ def posterior_predictive_plot(posterior_samples = None,
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             
             sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
                          kde = False, 
                          rug = False, 
                          hist_kws = {'alpha': 1, 
                                      'color': 'black',
                                      'histtype': 'step', 
                                      'density': 1, 
-                                     'edgecolor': 'black'},
+                                     'edgecolor': 'black',
+                                     'linewidth': hist_linewidth},
                          ax = ax[i]);
 
             sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
@@ -1101,8 +1132,9 @@ def posterior_predictive_plot(posterior_samples = None,
                                      'color': gt_color, 
                                      'density': 1, 
                                      'edgecolor': gt_color, 
-                                     'histtype': 'step'}, 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
+                                     'histtype': 'step',
+                                     'linewidth': hist_linewidth}, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
                          kde = False, 
                          rug = False,
                          ax = ax[i])
@@ -1110,14 +1142,15 @@ def posterior_predictive_plot(posterior_samples = None,
         else:
             
             sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
-                         kde = False, 
-                         rug = False, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
+                         kde = False,
+                         rug = False,
                          hist_kws = {'alpha': 1, 
                                      'color': 'black', 
                                      'histtype': 'step', 
                                      'density': 1, 
-                                     'edgecolor': 'black'},
+                                     'edgecolor': 'black',
+                                     'linewidth': hist_linewidth},
                          ax = ax);
             
             sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
@@ -1125,8 +1158,9 @@ def posterior_predictive_plot(posterior_samples = None,
                                      'color': gt_color, 
                                      'density': 1,
                                      'edgecolor': gt_color,  
-                                     'histtype':'step'}, 
-                         bins = np.linspace(-max_t, max_t, 200), #50, 
+                                     'histtype':'step',
+                                     'linewidth': hist_linewidth}, 
+                         bins = np.linspace(-max_t, max_t, nbins), #50, 
                          kde = False, 
                          rug = False,
                          ax = ax)
