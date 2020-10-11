@@ -404,10 +404,14 @@ def model_plot(posterior_samples = None,
             #print(posterior_samples)
             #n_plots = posterior_samples.shape[0]
 
+    if posterior_samples is None and model_gt is None:
+        return 'Please provide either posterior samples, \n or a ground truth model and parameter set to plot something here. \n Currently you are requesting an empty plot' 
+    
     
     # Taking care of special case with 1 plot
     if n_plots == 1:
-        ground_truths = np.expand_dims(ground_truths, 0)
+        if model_gt is not None:
+            ground_truths = np.expand_dims(ground_truths, 0)
         if posterior_samples is not None:
             posterior_samples = np.expand_dims(posterior_samples, 0)
             
@@ -421,7 +425,11 @@ def model_plot(posterior_samples = None,
                   }
     
     title = 'Model Plot: '
-    ax_titles = config[model_gt]['params']
+    
+    if model_gt is not None:
+        ax_titles = config[model_gt]['params']
+    else: 
+        ax_titles = ''
 
     rows = int(np.ceil(n_plots / cols))
 
@@ -435,7 +443,11 @@ def model_plot(posterior_samples = None,
                            sharex = False, 
                            sharey = False)
     
-    my_suptitle = fig.suptitle(title + plot_titles[model_gt], fontsize = 40)
+    if model_gt is not None:  
+        my_suptitle = fig.suptitle(title + plot_titles[model_gt], fontsize = 40)
+    else:
+        my_suptitle = fig.suptitle(title.replace(':', ''), fontsize = 40)
+        
     sns.despine(right = True)
     
     t_s = np.arange(0, max_t, 0.01)
@@ -456,13 +468,14 @@ def model_plot(posterior_samples = None,
         
         # Run simulations and add histograms
         # True params
-        out = simulator(theta = ground_truths[i, :],
-                        model = model_gt, 
-                        n_samples = 20000,
-                        bin_dim = None)
+        if model_gt is not None:
+            out = simulator(theta = ground_truths[i, :],
+                            model = model_gt, 
+                            n_samples = 20000,
+                            bin_dim = None)
              
-        tmp_true = np.concatenate([out[0], out[1]], axis = 1)
-        choice_p_up_true = np.sum(tmp_true[:, 1] == 1) / tmp_true.shape[0]
+            tmp_true = np.concatenate([out[0], out[1]], axis = 1)
+            choice_p_up_true = np.sum(tmp_true[:, 1] == 1) / tmp_true.shape[0]
         
         if posterior_samples is not None:
             # Run Model simulations for posterior samples
@@ -491,10 +504,8 @@ def model_plot(posterior_samples = None,
         if posterior_samples is not None:
             choice_p_up_post = np.sum(tmp_post[:, 1] == 1) / tmp_post.shape[0]
 
-
-
-            counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
-                                        bins = np.linspace(0, max_t, 100))
+#             counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
+#                                         bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
                                           bins = np.linspace(0, max_t, 100),
@@ -521,33 +532,35 @@ def model_plot(posterior_samples = None,
                             edgecolor = 'black',
                             zorder = -1)
                         
-        counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
-                                bins = np.linspace(0, max_t, 100))
-
-        counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
-                                      bins = np.linspace(0, max_t, 100),
-                                      density = True)
         
-        if row_tmp == 0 and col_tmp == 0:
-            ax_tmp.hist(bins[:-1], 
+        if model_gt is not None:
+#             counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
+#                                     bins = np.linspace(0, max_t, 100))
+
+            counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
+                                          bins = np.linspace(0, max_t, 100),
+                                          density = True)
+
+            if row_tmp == 0 and col_tmp == 0:
+                ax_tmp.hist(bins[:-1], 
+                            bins, 
+                            weights = choice_p_up_true * counts_2,
+                            histtype = 'step',
+                            alpha = 0.5, 
+                            color = 'red',
+                            edgecolor = 'red',
+                            zorder = -1,
+                            label = 'Ground Truth Data')
+                ax_tmp.legend(loc = 'lower right')
+            else:
+                ax_tmp.hist(bins[:-1], 
                         bins, 
                         weights = choice_p_up_true * counts_2,
                         histtype = 'step',
                         alpha = 0.5, 
                         color = 'red',
                         edgecolor = 'red',
-                        zorder = -1,
-                        label = 'Ground Truth Data')
-            ax_tmp.legend(loc = 'lower right')
-        else:
-            ax_tmp.hist(bins[:-1], 
-                    bins, 
-                    weights = choice_p_up_true * counts_2,
-                    histtype = 'step',
-                    alpha = 0.5, 
-                    color = 'red',
-                    edgecolor = 'red',
-                    zorder = -1)
+                        zorder = -1)
              
         #ax.invert_xaxis()
         if rows > 1 and cols > 1:
@@ -561,8 +574,8 @@ def model_plot(posterior_samples = None,
         ax_tmp.set_yticks([])
         
         if posterior_samples is not None:
-            counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
-                            bins = np.linspace(0, max_t, 100))
+#             counts, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
+#                             bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
                                           bins = np.linspace(0, max_t, 100),
@@ -575,21 +588,22 @@ def model_plot(posterior_samples = None,
                         color = 'black',
                         edgecolor = 'black',
                         zorder = -1)
-        
-        counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
-                                bins = np.linspace(0, max_t, 100))
-    
-        counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
-                                      bins = np.linspace(0, max_t, 100),
-                                      density = True)
-        ax_tmp.hist(bins[:-1], 
-                    bins, 
-                    weights = (1 - choice_p_up_true) * counts_2,
-                    histtype = 'step',
-                    alpha = 0.5, 
-                    color = 'red',
-                    edgecolor = 'red',
-                    zorder = -1)
+            
+        if model_gt is not None:
+#             counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
+#                                     bins = np.linspace(0, max_t, 100))
+
+            counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
+                                          bins = np.linspace(0, max_t, 100),
+                                          density = True)
+            ax_tmp.hist(bins[:-1], 
+                        bins, 
+                        weights = (1 - choice_p_up_true) * counts_2,
+                        histtype = 'step',
+                        alpha = 0.5, 
+                        color = 'red',
+                        edgecolor = 'red',
+                        zorder = -1)
         
         # Plot posterior samples of bounds and slopes (model)
         if show_model:
@@ -699,7 +713,7 @@ def model_plot(posterior_samples = None,
                                    alpha = 0.05)
                             
         # Plot ground_truths bounds
-        if show_model:
+        if show_model and model_gt is not None:
             if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2':
                 b = ground_truths[i, 1] * bf.weibull_cdf(t = t_s,
                                                          alpha = ground_truths[i, 4],
@@ -808,9 +822,11 @@ def model_plot(posterior_samples = None,
                
         # Set plot title
         title_tmp = ''
-        for k in range(len(ax_titles)):
-            title_tmp += ax_titles[k] + ': '
-            title_tmp += str(round(ground_truths[i, k], 2)) + ', ' 
+        
+        if model_gt is not None:
+            for k in range(len(ax_titles)):
+                title_tmp += ax_titles[k] + ': '
+                title_tmp += str(round(ground_truths[i, k], 2)) + ', ' 
 
         if rows > 1 and cols > 1:
             if row_tmp == rows:
@@ -826,8 +842,9 @@ def model_plot(posterior_samples = None,
             ax[row_tmp, col_tmp].tick_params(axis = 'x', size = 20)
 
             # Some extra styling:
-            ax[row_tmp, col_tmp].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-            ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+            if model_gt is not None:
+                ax[row_tmp, col_tmp].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
         
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             if row_tmp == rows:
@@ -843,8 +860,9 @@ def model_plot(posterior_samples = None,
             ax[i].tick_params(axis = 'x', size = 20)
 
             # Some extra styling:
-            ax[i].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-            ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+            if model_gt is not None:
+                ax[i].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
         
         else:
             if row_tmp == rows:
@@ -860,9 +878,10 @@ def model_plot(posterior_samples = None,
             ax.tick_params(axis = 'x', size = 20)
 
             # Some extra styling:
-            ax.axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-            ax.axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
-    
+            if model_gt is not None:
+                ax.axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax.axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+
     if rows > 1 and cols > 1:
         for i in range(n_plots, rows * cols, 1):
             row_tmp = int(np.floor(i / cols))
