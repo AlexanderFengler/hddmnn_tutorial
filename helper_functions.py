@@ -374,7 +374,8 @@ def _make_trace_plotready_condition(hddm_trace = None, model = ''):
 # Plot bound
 # Mean posterior predictives
 def model_plot(posterior_samples = None,
-               ground_truths = [],
+               ground_truths_parameters = [],
+               ground_truths_data = [],
                cols = 3,
                model_gt = 'weibull_cdf',
                model_fitted = 'angle',
@@ -411,9 +412,11 @@ def model_plot(posterior_samples = None,
     # Taking care of special case with 1 plot
     if n_plots == 1:
         if model_gt is not None:
-            ground_truths = np.expand_dims(ground_truths, 0)
+            ground_truths_parameters = np.expand_dims(ground_truths_parameters, 0)
         if posterior_samples is not None:
             posterior_samples = np.expand_dims(posterior_samples, 0)
+        if ground_truths_data is not None:
+            ground_truths_data = np.expand_dims(ground_truths_data, 0)
             
     plot_titles = {'ddm': 'DDM', 
                    'angle': 'ANGLE',
@@ -469,7 +472,7 @@ def model_plot(posterior_samples = None,
         # Run simulations and add histograms
         # True params
         if model_gt is not None:
-            out = simulator(theta = ground_truths[i, :],
+            out = simulator(theta = ground_truths_parameters[i, :],
                             model = model_gt, 
                             n_samples = 20000,
                             bin_dim = None)
@@ -561,6 +564,37 @@ def model_plot(posterior_samples = None,
                         color = 'red',
                         edgecolor = 'red',
                         zorder = -1)
+        
+        if ground_truths_data is not None:
+            counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == 1, 0],
+                                          bins = np.linspace(0, max_t, 100),
+                                          density = True)
+            
+            choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
+
+            
+            if row_tmp == 0 and col_tmp == 0:
+                ax_tmp.hist(bins[:-1], 
+                            bins, 
+                            weights = choice_p_up_true_dat * counts_2,
+                            histtype = 'step',
+                            alpha = 0.5, 
+                            color = 'blue',
+                            edgecolor = 'blue',
+                            zorder = -1,
+                            label = 'Dataset')
+                ax_tmp.legend(loc = 'lower right')
+            else:
+                ax_tmp.hist(bins[:-1], 
+                        bins, 
+                        weights = choice_p_up_true_dat * counts_2,
+                        histtype = 'step',
+                        alpha = 0.5, 
+                        color = 'blue',
+                        edgecolor = 'blue',
+                        zorder = -1)
+            
+            
              
         #ax.invert_xaxis()
         if rows > 1 and cols > 1:
@@ -604,6 +638,27 @@ def model_plot(posterior_samples = None,
                         color = 'red',
                         edgecolor = 'red',
                         zorder = -1)
+        
+        
+        # -- new stuff
+        
+        if ground_truths_data is not None:
+            counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == - 1, 0],
+                                          bins = np.linspace(0, max_t, 100),
+                                          density = True)
+            
+            #choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
+
+            
+            ax_tmp.hist(bins[:-1], 
+                        bins, 
+                        weights = (1 - choice_p_up_true_dat) * counts_2,
+                        histtype = 'step',
+                        alpha = 0.5, 
+                        color = 'blue',
+                        edgecolor = 'blue',
+                        zorder = -1)
+
         
         # Plot posterior samples of bounds and slopes (model)
         if show_model:
@@ -715,63 +770,63 @@ def model_plot(posterior_samples = None,
         # Plot ground_truths bounds
         if show_model and model_gt is not None:
             if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2':
-                b = ground_truths[i, 1] * bf.weibull_cdf(t = t_s,
-                                                         alpha = ground_truths[i, 4],
-                                                         beta = ground_truths[i, 5])
+                b = ground_truths_parameters[i, 1] * bf.weibull_cdf(t = t_s,
+                                                         alpha = ground_truths_parameters[i, 4],
+                                                         beta = ground_truths_parameters[i, 5])
 
             if model_gt == 'angle' or model_gt == 'angle2':
-                b = np.maximum(ground_truths[i, 1] + bf.angle(t = t_s, theta = ground_truths[i, 4]), 0)
+                b = np.maximum(ground_truths_parameters[i, 1] + bf.angle(t = t_s, theta = ground_truths_parameters[i, 4]), 0)
 
             if model_gt == 'ddm':
-                b = ground_truths[i, 1] * np.ones(t_s.shape[0])
+                b = ground_truths_parameters[i, 1] * np.ones(t_s.shape[0])
 
-            start_point_tmp = - ground_truths[i, 1] + \
-                              (2 * ground_truths[i, 1] * ground_truths[i, 2])
-            slope_tmp = ground_truths[i, 0]
+            start_point_tmp = - ground_truths_parameters[i, 1] + \
+                              (2 * ground_truths_parameters[i, 1] * ground_truths_parameters[i, 2])
+            slope_tmp = ground_truths_parameters[i, 0]
 
             if rows > 1 and cols > 1:
                 if row_tmp == 0 and col_tmp == 0:
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths[i, 3], b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                                               alpha = 1, 
                                               linewidth = 3, 
                                               zorder = 1000)
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths[i, 3], -b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                                               alpha = 1,
                                               linewidth = 3,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
                     ax[row_tmp, col_tmp].legend()
                 else:
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths[i, 3], b, 'red', 
-                              t_s + ground_truths[i, 3], -b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
+                              t_s + ground_truths_parameters[i, 3], -b, 'red', 
                               alpha = 1,
                               linewidth = 3,
                               zorder = 1000)
                     
             elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                 if row_tmp == 0 and col_tmp == 0:
-                    ax[i].plot(t_s + ground_truths[i, 3], b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                                               alpha = 1, 
                                               linewidth = 3, 
                                               zorder = 1000)
-                    ax[i].plot(t_s + ground_truths[i, 3], -b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                                               alpha = 1,
                                               linewidth = 3,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
                     ax[i].legend()
                 else:
-                    ax[i].plot(t_s + ground_truths[i, 3], b, 'red', 
-                              t_s + ground_truths[i, 3], -b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
+                              t_s + ground_truths_parameters[i, 3], -b, 'red', 
                               alpha = 1,
                               linewidth = 3,
                               zorder = 1000)
             else:
-                ax.plot(t_s + ground_truths[i, 3], b, 'red', 
+                ax.plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                         alpha = 1, 
                         linewidth = 3, 
                         zorder = 1000)
-                ax.plot(t_s + ground_truths[i, 3], -b, 'red', 
+                ax.plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
                         alpha = 1,
                         linewidth = 3,
                         zorder = 1000,
@@ -790,7 +845,7 @@ def model_plot(posterior_samples = None,
 
             # print('maxid', maxid)
             if rows > 1 and cols > 1:
-                ax[row_tmp, col_tmp].plot(t_s[:maxid] + ground_truths[i, 3], 
+                ax[row_tmp, col_tmp].plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
                                           'red', 
                                           alpha = 1, 
@@ -800,7 +855,7 @@ def model_plot(posterior_samples = None,
                 ax[row_tmp, col_tmp].set_zorder(ax_tmp.get_zorder() + 1)
                 ax[row_tmp, col_tmp].patch.set_visible(False)
             elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
-                ax[i].plot(t_s[:maxid] + ground_truths[i, 3], 
+                ax[i].plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
                                           'red', 
                                           alpha = 1, 
@@ -810,7 +865,7 @@ def model_plot(posterior_samples = None,
                 ax[i].set_zorder(ax_tmp.get_zorder() + 1)
                 ax[i].patch.set_visible(False)
             else:
-                ax.plot(t_s[:maxid] + ground_truths[i, 3], 
+                ax.plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                         start_point_tmp + slope_tmp * t_s[:maxid], 
                         'red', 
                         alpha = 1, 
@@ -826,7 +881,7 @@ def model_plot(posterior_samples = None,
         if model_gt is not None:
             for k in range(len(ax_titles)):
                 title_tmp += ax_titles[k] + ': '
-                title_tmp += str(round(ground_truths[i, k], 2)) + ', ' 
+                title_tmp += str(round(ground_truths_parameters[i, k], 2)) + ', ' 
 
         if rows > 1 and cols > 1:
             if row_tmp == rows:
@@ -843,8 +898,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[row_tmp, col_tmp].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax[row_tmp, col_tmp].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
         
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             if row_tmp == rows:
@@ -861,8 +916,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[i].axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax[i].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
         
         else:
             if row_tmp == rows:
@@ -879,8 +934,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax.axvline(x = ground_truths[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax.axhline(y = 0, xmin = 0, xmax = ground_truths[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax.axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
+                ax.axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
 
     if rows > 1 and cols > 1:
         for i in range(n_plots, rows * cols, 1):
