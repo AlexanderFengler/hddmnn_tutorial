@@ -39,6 +39,26 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
          }
 
 # DATA SIMULATION ------------------------------------------------------------------------------
+def str_to_num(string = '', n_digits = 3):
+    new_str = ''
+    leading = 1
+    for digit in range(n_digits):
+        if string[digit] == '0' and leading and (digit < n_digits - 1):
+            pass
+        else:
+            new_str += string[digit]
+            leading = 0
+    return int(new_str)
+
+def num_to_str(num = 0, n_digits = 3):
+    new_str = ''
+    for i in range(n_digits - 1, -1, -1):
+        if num < np.power(10, i):
+            new_str += '0'
+    if num != 0:
+        new_str += str(num)
+    return new_str
+
 def bin_simulator_output(out = [0, 0],
                          bin_dt = 0.04,
                          nbins = 0): # ['v', 'a', 'w', 'ndt', 'angle']
@@ -276,7 +296,7 @@ def simulator_hierarchical(n_subjects = 5,
         gt[param + '_std'] = global_stds[0, id_tmp]
     
     for i in range(n_subjects):
-        
+        subj_id = num_to_str(i)
         # Get subject parameters
         a = (config[model]['param_bounds'][0] - global_means[0, :]) / global_stds[0, :]
         b = (config[model]['param_bounds'][1] - global_means[0, :]) / global_stds[0, :]
@@ -289,17 +309,17 @@ def simulator_hierarchical(n_subjects = 5,
                             bin_dim = None)
         
         dataframes.append(hddm_preprocess(simulator_data = sim_out, 
-                                          subj_id = i))
+                                          subj_id = subj_id))
         
         for param in config[model]['params']:
             id_tmp = config[model]['params'].index(param)
-            gt[param + '_subj.' + str(i)] = subject_parameters[i, id_tmp]
+            gt[param + '_subj.' + subj_id] = subject_parameters[i, id_tmp]
         
     data_out = pd.concat(dataframes)
     
     return (data_out, gt, subject_parameters)                 
                          
-def hddm_preprocess(simulator_data = None, subj_id = 0):
+def hddm_preprocess(simulator_data = None, subj_id = 'none'):
     
     df = pd.DataFrame(simulator_data[0].astype(np.double), columns = ['rt'])
     df['response'] = simulator_data[1].astype(int)
@@ -327,17 +347,18 @@ def _make_trace_plotready_hierarchical(hddm_trace = None, model = ''):
     subj_l = []
     for key in hddm_trace.keys():
         if '_subj' in key:
-            subj_l.append(int(float(key[-3:])))
+            subj_l.append(str_to_num(key[-3:]))
+            #subj_l.append(int(float(key[-3:])))
 
-    dat = np.zeros((max(subj_l) + 1, hddm_trace.shape[0], len(config[model]['params'])))
+    dat = np.zeros((max((subj_l)) + 1, hddm_trace.shape[0], len(config[model]['params'])))
     for key in hddm_trace.keys():
         if '_subj' in key:
-            id_tmp = int(float(key[-3:]))
+            id_tmp = str_to_num(key[-3:]) #int(float(key[-3:]))
             if '_trans' in key:
                 val_tmp = 1 / ( 1 + np.exp(- hddm_trace[key]))
             else:
                 val_tmp = hddm_trace[key]
-            dat[id_tmp, : ,config[model]['params'].index(key[:key.find('_')])] = val_tmp   
+            dat[id_tmp, : , config[model]['params'].index(key[:key.find('_')])] = val_tmp   
             
     return dat
 
@@ -396,6 +417,7 @@ def model_plot(posterior_samples = None,
         if datatype == 'hierarchical':
             posterior_samples = _make_trace_plotready_hierarchical(posterior_samples, 
                                                                    model = model_fitted)
+            print(posterior_samples.shape)
             n_plots = posterior_samples.shape[0]
 #             print(posterior_samples)
             
