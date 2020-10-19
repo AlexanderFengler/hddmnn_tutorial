@@ -7,6 +7,7 @@ import sys
 import pickle
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import truncnorm
+import matplotlib
 
 
 sys.path.append('simulators')
@@ -410,8 +411,14 @@ def model_plot(posterior_samples = None,
                ylimit = 2,
                posterior_linewidth = 3,
                gt_linewidth = 3,
-               hist_linewidth = 3):
+               hist_linewidth = 3,
+               save = False):
     
+    if save == True:
+        matplotlib.rcParams['text.usetex'] = True
+        #matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['svg.fonttype'] = 'none'
+
     # Inputs are hddm_traces --> make plot ready
     if input_hddm_trace and posterior_samples is not None:
         if datatype == 'hierarchical':
@@ -844,7 +851,7 @@ def model_plot(posterior_samples = None,
                                               linewidth = 3,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
-                    ax[row_tmp, col_tmp].legend()
+                    ax[row_tmp, col_tmp].legend(loc = 'upper right')
                 else:
                     ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                               t_s + ground_truths_parameters[i, 3], -b, 'red', 
@@ -863,7 +870,7 @@ def model_plot(posterior_samples = None,
                                               linewidth = gt_linewidth,
                                               zorder = 1000, 
                                               label = 'Grund Truth Model')
-                    ax[i].legend()
+                    ax[i].legend(loc = 'upper right')
                 else:
                     ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
                               t_s + ground_truths_parameters[i, 3], -b, 'red', 
@@ -994,6 +1001,13 @@ def model_plot(posterior_samples = None,
 
     plt.tight_layout(rect = [0, 0.03, 1, 0.9])
     
+    if save == True:
+        plt.savefig('figures/' + 'hierarchical_model_plot_' + model_gt + '_' + datatype + '.svg',
+                    format = 'svg', 
+                    transparent = True,
+                    frameon = False)
+        plt.close()
+    
     return plt.show()
 
 
@@ -1011,12 +1025,18 @@ def posterior_predictive_plot(posterior_samples = None,
                               samples_by_param = 10,
                               xlimit = 10,
                               bin_size = 0.025,
-                              hist_linewidth = 3):
+                              hist_linewidth = 3,
+                              save = False):
     
     
 #                 counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
 #                                           bins = np.linspace(0, max_t, 100),
 #                                           density = True)
+
+    if save == True:
+        matplotlib.rcParams['text.usetex'] = True
+        #matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['svg.fonttype'] = 'none'
     
     if model_gt is None and ground_truths_data is None and posterior_samples is None:
         return 'No ground truth model was supplied, no dataset was supplied and no posterior sample was supplied. Nothin to plot' 
@@ -1250,6 +1270,14 @@ def posterior_predictive_plot(posterior_samples = None,
             row_tmp = int(np.floor(i / cols))
             col_tmp = i - (cols * row_tmp)
             ax[row_tmp, col_tmp].axis('off')
+            
+            
+    if save == True:
+        plt.savefig('figures/' + 'posterior_predictive_plot_' + model_gt + '_' + datatype + '.svg',
+                    format = 'svg', 
+                    transparent = True,
+                    frameon = False)
+        plt.close()
 
     return plt.show()
 
@@ -1257,7 +1285,14 @@ def caterpillar_plot(posterior_samples = [],
                      ground_truths = None,
                      model = 'angle',
                      datatype = 'hierarchical', # 'hierarchical', 'single_subject', 'condition'
-                     drop_sd = True):
+                     drop_sd = True,
+                     save = False):
+    
+    if save == True:
+        matplotlib.rcParams['text.usetex'] = True
+        #matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['svg.fonttype'] = 'none'
+    
     
     sns.set(style = "white", 
         palette = "muted", 
@@ -1269,7 +1304,7 @@ def caterpillar_plot(posterior_samples = [],
                            sharex = False, 
                            sharey = False)
     
-    my_suptitle = fig.suptitle('Caterpillar plot: ' + model.upper(), fontsize = 40)
+    my_suptitle = fig.suptitle('Caterpillar plot: ' + model.upper().replace('_', '-'), fontsize = 40)
     sns.despine(right = True)
     
     trace = posterior_samples.copy()
@@ -1307,7 +1342,8 @@ def caterpillar_plot(posterior_samples = [],
     ecdfs = {}
     plot_vals = {} # [0.01, 0.9], [0.01, 0.99], [mean]
     for k in trace.keys():
-        if 'std' in k:
+        
+        if 'std' in k and drop_sd:
             pass
         else:
             if '_trans' in k:
@@ -1318,26 +1354,38 @@ def caterpillar_plot(posterior_samples = [],
             #print(k)
             #print(trace[k])
             ok_ = 1
+            
+            k_old = k
+            k = k.replace('_', '-')
+            
             if drop_sd == True:
                 if 'sd' in k:
                     ok_ = 0
             if ok_:
-                ecdfs[k] = ECDF(trace[k])
-                tmp_sorted = sorted(trace[k])
+                ecdfs[k] = ECDF(trace[k_old])
+                tmp_sorted = sorted(trace[k_old])
                 _p01 =  tmp_sorted[np.sum(ecdfs[k](tmp_sorted) <= 0.01) - 1]
                 _p99 = tmp_sorted[np.sum(ecdfs[k](tmp_sorted) <= 0.99) - 1]
                 _p1 = tmp_sorted[np.sum(ecdfs[k](tmp_sorted) <= 0.1) - 1]
                 _p9 = tmp_sorted[np.sum(ecdfs[k](tmp_sorted) <= 0.9) - 1]
-                _pmean = trace[k].mean()
+                _pmean = trace[k_old].mean()
                 plot_vals[k] = [[_p01, _p99], [_p1, _p9], _pmean]
         
     x = [plot_vals[k][2] for k in plot_vals.keys()]
     ax.scatter(x, plot_vals.keys(), c = 'black', marker = 's', alpha = 0)
     for k in plot_vals.keys():
+        k = k.replace('_', '-')
         ax.plot(plot_vals[k][1], [k, k], c = 'grey', zorder = -1, linewidth = 5)
         ax.plot(plot_vals[k][0] , [k, k], c = 'black', zorder = -1)
         if ground_truths is not None:
-            ax.scatter(gt_dict[k], k,  c = 'red', marker = "|")
+            ax.scatter(gt_dict[k.replace('-', '_')], k,  c = 'red', marker = "|")
+            
+    if save == True:
+        plt.savefig('figures/' + 'caterpillar_plot_' + model + '_' + datatype + '.svg',
+                    format = 'svg', 
+                    transparent = True,
+                    frameon = False)
+        #plt.close()
 
     return plt.show()
 
@@ -1348,7 +1396,14 @@ def posterior_pair_plot(posterior_samples = [],
                         aspect = 1,
                         n_subsample = 1000,
                         ground_truths = [],
-                        model = None):
+                        model = None,
+                        save = False):
+    
+    if save == True:
+        matplotlib.rcParams['text.usetex'] = True
+        #matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['svg.fonttype'] = 'none'
+    
     
     # some preprocessing
     #posterior_samples = posterior_samples.get_traces().copy()
@@ -1413,5 +1468,12 @@ def posterior_pair_plot(posterior_samples = [],
                              color = 'red',
                              markersize = 10)
             
+    if save == True:
+        plt.savefig('figures/' + 'pair_plot_' + model + '_' + datatype + '.svg',
+                    format = 'svg', 
+                    transparent = True,
+                    frameon = False)
+        plt.close()
+            
     # Show
-    return #plt.show(block = False)
+    return plt.show(block = False)
