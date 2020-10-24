@@ -37,6 +37,22 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
           'weibull_cdf':{'params': ['v', 'a', 'z', 't', 'alpha', 'beta'],
                          'param_bounds': [[-2, 0.5, 0.3, 0.2, 1.0, 1.0], [2, 1.7, 0.7, 1.8, 4.0, 6.0]]
                         },
+          'weibull_cdf_concave':{'params': ['v', 'a', 'z', 't', 'alpha', 'beta'],
+                                 'param_bounds': [[-2, 0.5, 0.3, 0.2, 1.5, 1.0], [2, 1.7, 0.7, 1.8, 4.0, 6.0]]
+                                 },
+          'levy':{'params':['v', 'a', 'z', 'alpha', 't'],
+                  'param_bounds':[[-2, 0.4, 0.3, 1.1, 0.1], [2, 1.7, 0.7, 1.9, 1.9]]
+                 },
+          'full_ddm':{'params':['v', 'a', 'z', 't', 'dw', 'sv', 'dndt'],
+                      'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 0.3, 0.25, 1.7, 0.2]]
+                     },
+          
+          'ornstein':{'params':['v', 'a', 'z', 'g', 't'],
+                      'param_bounds':[[-1.9, 0.4, 0.25, -0.9, 0.1], [1.9, 1.9, 0.75, 0.9, 1.9]]
+                     },
+          'ddm_sdv':{'params':['v', 'a', 'z', 't', 'sv'],
+                     'param_bounds':[[-2.2, 0.5, 0.25, 0.1, 0.3],[ 2.2, 2.2, 0.75, 1.9, 2.2]],
+                    },
          }
 
 # DATA SIMULATION ------------------------------------------------------------------------------
@@ -156,7 +172,7 @@ def simulator(theta,
                           boundary_params = {'theta': theta[4]}, 
                           n_samples = n_samples)
     
-    if model == 'weibull_cdf':
+    if model == 'weibull_cdf' or model == 'weibull_cdf_concave' or model == 'weibull_cdf2':
         x = ddm_flexbound(v = theta[0], 
                           a = theta[1], 
                           w = theta[2], 
@@ -201,7 +217,7 @@ def simulator(theta,
                     boundary_params = {},
                     n_samples = n_samples)
         
-    if model == 'ornstein_uhlenbeck':
+    if model == 'ornstein':
         x = ornstein_uhlenbeck(v = theta[0], 
                                a = theta[1], 
                                w = theta[2], 
@@ -455,6 +471,7 @@ def model_plot(posterior_samples = None,
                    'angle': 'ANGLE',
                    'full_ddm': 'FULL DDM',
                    'weibull_cdf': 'WEIBULL',
+                   'weibull_cdf_concave': 'WEIBULL',
                    'levy': 'LEVY',
                    'ornstein': 'ORNSTEIN UHLENBECK',
                    'ddm_sdv': 'DDM RANDOM SLOPE',
@@ -706,7 +723,7 @@ def model_plot(posterior_samples = None,
         if show_model:
             if posterior_samples is not None:
                 for j in range(n_post_params):
-                    if model_fitted == 'weibull_cdf' or model_fitted == 'weibull_cdf2':
+                    if model_fitted == 'weibull_cdf' or model_fitted == 'weibull_cdf2' or model_fitted == 'weibull_cdf_concave':
                         b = posterior_samples[i, idx[j], 1] * bf.weibull_cdf(t = t_s, 
                                                                              alpha = posterior_samples[i, idx[j], 4],
                                                                              beta = posterior_samples[i, idx[j], 5])
@@ -825,7 +842,7 @@ def model_plot(posterior_samples = None,
                             
         # Plot ground_truths bounds
         if show_model and model_gt is not None:
-            if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2':
+            if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2' or model_gt == 'weibull_cdf_concave':
                 b = ground_truths_parameters[i, 1] * bf.weibull_cdf(t = t_s,
                                                          alpha = ground_truths_parameters[i, 4],
                                                          beta = ground_truths_parameters[i, 5])
