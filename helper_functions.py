@@ -428,6 +428,7 @@ def model_plot(posterior_samples = None,
                posterior_linewidth = 3,
                gt_linewidth = 3,
                hist_linewidth = 3,
+               bin_size = 0.025,
                save = False):
     
     if save == True:
@@ -504,14 +505,15 @@ def model_plot(posterior_samples = None,
     sns.despine(right = True)
     
     t_s = np.arange(0, max_t, 0.01)
-    
+    nbins = int((max_t) / bin_size)
+
     for i in range(n_plots):
         row_tmp = int(np.floor(i / cols))
         col_tmp = i - (cols * row_tmp)
         
         if rows > 1 and cols > 1:
             ax[row_tmp, col_tmp].set_xlim(0, max_t)
-            ax[row_tmp, col_tmp].set_ylim(-ylimit, ylimit)
+            ax[row_tmp, col_tmp].set_ylim(- ylimit, ylimit)
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             ax[i].set_xlim(0, max_t)
             ax[i].set_ylim(-ylimit, ylimit)
@@ -561,7 +563,7 @@ def model_plot(posterior_samples = None,
 #                                         bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == 1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
             
             if j == (n_post_params - 1) and row_tmp == 0 and col_tmp == 0:
@@ -593,7 +595,7 @@ def model_plot(posterior_samples = None,
 #                                     bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
 
             if row_tmp == 0 and col_tmp == 0:
@@ -621,7 +623,7 @@ def model_plot(posterior_samples = None,
         
         if ground_truths_data is not None:
             counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == 1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
             
             choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
@@ -668,7 +670,7 @@ def model_plot(posterior_samples = None,
 #                             bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_post[tmp_post[:, 1] == -1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
             ax_tmp.hist(bins[:-1], 
                         bins, 
@@ -685,7 +687,7 @@ def model_plot(posterior_samples = None,
 #                                     bins = np.linspace(0, max_t, 100))
 
             counts_2, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
             ax_tmp.hist(bins[:-1], 
                         bins, 
@@ -702,7 +704,7 @@ def model_plot(posterior_samples = None,
         
         if ground_truths_data is not None:
             counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == - 1, 0],
-                                          bins = np.linspace(0, max_t, 100),
+                                          bins = np.linspace(0, max_t, nbins),
                                           density = True)
             
             #choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
