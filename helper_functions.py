@@ -43,7 +43,7 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
           'levy':{'params':['v', 'a', 'z', 'alpha', 't'],
                   'param_bounds':[[-2, 0.4, 0.3, 1.1, 0.1], [2, 1.7, 0.7, 1.9, 1.9]]
                  },
-          'full_ddm':{'params':['v', 'a', 'z', 't', 'dw', 'sv', 'dndt'],
+          'full_ddm':{'params':['v', 'a', 'z', 't', 'sz', 'sv', 'st'],
                       'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 0.3, 0.25, 1.7, 0.2]]
                      },
           
