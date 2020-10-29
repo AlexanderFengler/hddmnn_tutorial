@@ -27,6 +27,10 @@ import boundary_functions as bf
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
+# TD: Add one general simulator where we simply pass a bank of parameterizations and get simulations out to our liking // make it hddm friendly too
+
+
 # Config -----
 config = {'ddm': {'params':['v', 'a', 'z', 't'],
                   'param_bounds': [[-2, 0.5, 0.3, 0.2], [2, 2, 0.7, 1.8]],
@@ -241,6 +245,88 @@ def simulator(theta,
         return x
     else:
         return bin_simulator_output(x, nbins = bin_dim).flatten()
+    
+def simulator_stimcoding(model = 'angle',
+                         split_by = 'v',
+                         decision_criterion = 0.0,
+                         n_samples_by_condition = 1000):
+    
+    param_base = np.tile(np.random.uniform(low = config[model]['param_bounds'][0],
+                                           high = config[model]['param_bounds'][1], 
+                                           size = (1, len(config[model]['params']))),
+                                           (2, 1))
+    
+              
+    #len(config[model]['params']                   
+    #print(param_base)
+    gt = {}
+    for i in range(2):
+        id_tmp = config[model]['params'].index(split_by)
+        
+        if i == 0:
+#             param_base[i, id_tmp] = np.random.uniform(low = config[model]['param_bounds'][0][id_tmp], 
+#                                                       high = config[model]['param_bounds'][1][id_tmp])
+            gt[split_by] = param_base[i, id_tmp]
+            gt['decision_criterion'] = decision_criterion
+            if split_by == 'v':
+                param_base[i, id_tmp] = decision_criterion + param_base[i, id_tmp]
+            
+        if i == 1:
+            if split_by == 'v':
+                param_base[i, id_tmp] = decision_criterion - param_base[i, id_tmp]
+            if split_by == 'z':
+                param_base[i, id_tmp] = 1 - param_base[i, id_tmp]
+            
+    #print(param_base)
+    dataframes = []
+    for i in range(2):
+        sim_out = simulator(param_base[i, :], 
+                            model = model, 
+                            n_samples = n_samples_by_condition,
+                            bin_dim = None)
+        
+        dataframes.append(hddm_preprocess(simulator_data = sim_out, subj_id = i + 1))
+    
+    data_out = pd.concat(dataframes)
+    data_out = data_out.rename(columns = {'subj_idx': "stim"})
+    # print(param_base.shape)
+    return (data_out, gt, param_base)
+
+def simulator_covariate(dependent_params = ['v'],
+                        model = 'angle',
+                        n_samples = 1000,
+                        beta = 0.1,
+                        subj_id = 'none'):
+    
+    param_base = np.tile(np.random.uniform(low = config[model]['param_bounds'][0],
+                                           high = config[model]['param_bounds'][1], 
+                                           size = (1, len(config[model]['params']))),
+                                           (n_samples, 1))
+    
+    # TD: Be more clever about covariate magnitude (maybe supply?)
+    tmp_covariate_by_sample = np.random.uniform(low = - 1.0, high = 1.0, size = n_samples)
+    for covariate in covariate_params:
+        id_tmp = config[model]['params'].index(covariate)
+        param_base[:, id_tmp] = param_base[:, id_tmp] + (beta * tmp_covariate_by_sample)
+    
+    rts = []
+    choices = []
+    for i in range(n_samples):
+        sim_out = simulator(param_base[i, :],
+                            model = model,
+                            n_samples = 1,
+                            bin_dim = None)
+        
+        rts.append(sim_out[0])
+        choices.append(sim_out[1])
+    
+    rts = np.squeeze(np.stack(rts, axis = 0))
+    choices = np.squeeze(np.stack(choices, axis = 0))
+    
+    data = hddm_preprocess([rts, choices], subj_id)
+    data['BOLD'] = tmp_covariate_by_sample
+    
+    return (data, param_base, beta)
     
 def simulator_condition_effects(n_conditions = 4, 
                                 n_samples_by_condition = 1000,
