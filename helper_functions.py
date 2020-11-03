@@ -498,8 +498,8 @@ def _make_trace_plotready_condition(hddm_trace = None, model = ''):
 # Plot bound
 # Mean posterior predictives
 def model_plot(posterior_samples = None,
-               ground_truths_parameters = [],
-               ground_truths_data = [],
+               ground_truths_parameters = None,
+               ground_truths_data = None,
                cols = 3,
                model_gt = 'weibull_cdf',
                model_fitted = 'angle',
@@ -539,6 +539,8 @@ def model_plot(posterior_samples = None,
                                                                 model = model_fitted)
             n_plots = posterior_samples.shape[0]
             #print(posterior_samples)
+            #print(posterior_sampels.shape)
+            #print(posterior_samples)
             #n_plots = posterior_samples.shape[0]
 
     if posterior_samples is None and model_gt is None:
@@ -570,6 +572,17 @@ def model_plot(posterior_samples = None,
         ax_titles = config[model_gt]['params']
     else: 
         ax_titles = ''
+        
+    if ground_truths_data is not None and datatype == 'condition':
+        gt_tmp = np.zeros((4, 1000, 2))
+        
+        for i in np.unique(ground_truths_data['condition']):
+            gt_tmp[i, :, :] = ground_truths_data.loc[ground_truths_data['condition'] == i][['rt', 'nn_response']].values
+        
+        ground_truths_data = gt_tmp
+        
+    if ground_truths_data is not None and datatype == 'hierarchical':
+        print('Supplying ground truth data not yet implemented for hierarchical datasets')
 
     rows = int(np.ceil(n_plots / cols))
 
@@ -609,7 +622,7 @@ def model_plot(posterior_samples = None,
         
         # Run simulations and add histograms
         # True params
-        if model_gt is not None:
+        if model_gt is not None and ground_truths_data is None:
             out = simulator(theta = ground_truths_parameters[i, :],
                             model = model_gt, 
                             n_samples = 20000,
@@ -676,7 +689,7 @@ def model_plot(posterior_samples = None,
                             zorder = -1)
                         
         
-        if model_gt is not None:
+        if model_gt is not None and ground_truths_data is None:
 #             counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
 #                                     bins = np.linspace(0, max_t, 100))
 
@@ -768,7 +781,7 @@ def model_plot(posterior_samples = None,
                         linewidth = hist_linewidth,
                         zorder = -1)
             
-        if model_gt is not None:
+        if model_gt is not None and ground_truths_data is None:
 #             counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == -1, 0],
 #                                     bins = np.linspace(0, max_t, 100))
 
@@ -930,6 +943,11 @@ def model_plot(posterior_samples = None,
                             
         # Plot ground_truths bounds
         if show_model and model_gt is not None:
+            # If we supplied ground truth data --> make ground truth model blue otherwise red
+            tmp_colors = ['red', 'blue']
+            tmp_bool = ground_truths_data is not None
+            tmp_color = tmp_colors[int(tmp_bool)]
+            
             if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2' or model_gt == 'weibull_cdf_concave':
                 b = ground_truths_parameters[i, 1] * bf.weibull_cdf(t = t_s,
                                                          alpha = ground_truths_parameters[i, 4],
@@ -947,47 +965,47 @@ def model_plot(posterior_samples = None,
 
             if rows > 1 and cols > 1:
                 if row_tmp == 0 and col_tmp == 0:
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, tmp_color, 
                                               alpha = 1, 
                                               linewidth = gt_linewidth, 
                                               zorder = 1000)
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], -b, tmp_color, 
                                               alpha = 1,
                                               linewidth = 3,
                                               zorder = 1000, 
-                                              label = 'Grund Truth Model')
+                                              label = 'Ground Truth Model')
                     ax[row_tmp, col_tmp].legend(loc = 'upper right')
                 else:
-                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
-                              t_s + ground_truths_parameters[i, 3], -b, 'red', 
+                    ax[row_tmp, col_tmp].plot(t_s + ground_truths_parameters[i, 3], b, tmp_color, 
+                              t_s + ground_truths_parameters[i, 3], -b, tmp_color, 
                               alpha = 1,
                               linewidth = gt_linewidth,
                               zorder = 1000)
                     
             elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                 if row_tmp == 0 and col_tmp == 0:
-                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, tmp_color, 
                                               alpha = 1, 
                                               linewidth = gt_linewidth, 
                                               zorder = 1000)
-                    ax[i].plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], -b, tmp_color, 
                                               alpha = 1,
                                               linewidth = gt_linewidth,
                                               zorder = 1000, 
-                                              label = 'Grund Truth Model')
+                                              label = 'Ground Truth Model')
                     ax[i].legend(loc = 'upper right')
                 else:
-                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
-                              t_s + ground_truths_parameters[i, 3], -b, 'red', 
+                    ax[i].plot(t_s + ground_truths_parameters[i, 3], b, tmp_color, 
+                              t_s + ground_truths_parameters[i, 3], -b, tmp_color, 
                               alpha = 1,
                               linewidth = gt_linewidth,
                               zorder = 1000)
             else:
-                ax.plot(t_s + ground_truths_parameters[i, 3], b, 'red', 
+                ax.plot(t_s + ground_truths_parameters[i, 3], b, tmp_color, 
                         alpha = 1, 
                         linewidth = gt_linewidth, 
                         zorder = 1000)
-                ax.plot(t_s + ground_truths_parameters[i, 3], -b, 'red', 
+                ax.plot(t_s + ground_truths_parameters[i, 3], -b, tmp_color, 
                         alpha = 1,
                         linewidth = gt_linewidth,
                         zorder = 1000,
@@ -1008,7 +1026,7 @@ def model_plot(posterior_samples = None,
             if rows > 1 and cols > 1:
                 ax[row_tmp, col_tmp].plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
-                                          'red', 
+                                          tmp_color, 
                                           alpha = 1, 
                                           linewidth = gt_linewidth, 
                                           zorder = 1000)
@@ -1018,7 +1036,7 @@ def model_plot(posterior_samples = None,
             elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
                 ax[i].plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                                           start_point_tmp + slope_tmp * t_s[:maxid], 
-                                          'red', 
+                                          tmp_color, 
                                           alpha = 1, 
                                           linewidth = gt_linewidth, 
                                           zorder = 1000)
@@ -1028,7 +1046,7 @@ def model_plot(posterior_samples = None,
             else:
                 ax.plot(t_s[:maxid] + ground_truths_parameters[i, 3], 
                         start_point_tmp + slope_tmp * t_s[:maxid], 
-                        'red', 
+                        tmp_color, 
                         alpha = 1, 
                         linewidth = gt_linewidth, 
                         zorder = 1000)
@@ -1059,8 +1077,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[row_tmp, col_tmp].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax[row_tmp, col_tmp].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
         
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             if row_tmp == rows:
@@ -1077,8 +1095,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[i].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax[i].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
         
         else:
             if row_tmp == rows:
@@ -1095,8 +1113,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax.axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = 'red', linestyle = '--')
-                ax.axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = 'red',  linestyle = '--')
+                ax.axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                ax.axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
 
     if rows > 1 and cols > 1:
         for i in range(n_plots, rows * cols, 1):
@@ -1391,6 +1409,8 @@ def caterpillar_plot(posterior_samples = [],
                      model = 'angle',
                      datatype = 'hierarchical', # 'hierarchical', 'single_subject', 'condition'
                      drop_sd = True,
+                     x_lims = [-2, 2],
+                     aspect_ratio = 2,
                      save = False):
     
     if save == True:
@@ -1403,9 +1423,11 @@ def caterpillar_plot(posterior_samples = [],
         palette = "muted", 
         color_codes = True,
         font_scale = 2)
-
+    
+    
+    
     fig, ax = plt.subplots(1, 1, 
-                           figsize = (10, 10), 
+                           figsize = (10, aspect_ratio * 10), 
                            sharex = False, 
                            sharey = False)
     
@@ -1484,7 +1506,9 @@ def caterpillar_plot(posterior_samples = [],
         ax.plot(plot_vals[k][0] , [k, k], c = 'black', zorder = -1)
         if ground_truths is not None:
             ax.scatter(gt_dict[k.replace('-', '_')], k,  c = 'red', marker = "|")
-            
+        
+    ax.set_xlim(x_lims[0], x_lims[1])
+    
     if save == True:
         plt.savefig('figures/' + 'caterpillar_plot_' + model + '_' + datatype + '.svg',
                     format = 'svg', 
