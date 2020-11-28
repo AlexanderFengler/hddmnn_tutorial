@@ -48,7 +48,7 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
                   'param_bounds':[[-2, 0.4, 0.3, 1.1, 0.1], [2, 1.7, 0.7, 1.9, 1.9]]
                  },
           'full_ddm':{'params':['v', 'a', 'z', 't', 'sz', 'sv', 'st'],
-                      'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 0.3, 0.25, 1.7, 0.2]]
+                      'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 1.7, 0.25, 1.7, 0.2]]
                      },
           
           'ornstein':{'params':['v', 'a', 'z', 'g', 't'],
@@ -58,6 +58,14 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
                      'param_bounds':[[-2.2, 0.5, 0.25, 0.1, 0.3],[ 2.2, 2.2, 0.75, 1.9, 2.2]],
                     },
          }
+
+hddm_include_config = {'angle': ['z', 'theta'],
+                  'weibull_cdf':['z', 'alpha', 'beta'],
+                  'full_ddm': ['z', 'st', 'sv', 'sz'],
+                  'levy': ['z', 'alpha'],
+                  'ornstein': ['z', 'g'],
+                  'ddm_sdv': ['z', 'sv'],
+                  'ddm': ['z']}
 
 # DATA SIMULATION ------------------------------------------------------------------------------
 def str_to_num(string = '', n_digits = 3):
@@ -574,7 +582,7 @@ def model_plot(posterior_samples = None,
         ax_titles = ''
         
     if ground_truths_data is not None and datatype == 'condition':
-        gt_tmp = np.zeros((4, 1000, 2))
+        gt_tmp = np.zeros((n_plots, int(ground_truths_data.values.shape[0] / n_plots), 2))
         
         for i in np.unique(ground_truths_data['condition']):
             gt_tmp[i, :, :] = ground_truths_data.loc[ground_truths_data['condition'] == i][['rt', 'nn_response']].values
@@ -750,7 +758,6 @@ def model_plot(posterior_samples = None,
                         edgecolor = 'blue',
                         linewidth = hist_linewidth,
                         zorder = -1)
-            
             
              
         #ax.invert_xaxis()
@@ -940,13 +947,14 @@ def model_plot(posterior_samples = None,
                                    linestyle = '--',
                                    linewidth = posterior_linewidth,
                                    alpha = 0.05)
+                        
+        # If we supplied ground truth data --> make ground truth model blue, otherwise red
+        tmp_colors = ['red', 'blue']
+        tmp_bool = ground_truths_data is not None
+        tmp_color = tmp_colors[int(tmp_bool)]
                             
         # Plot ground_truths bounds
         if show_model and model_gt is not None:
-            # If we supplied ground truth data --> make ground truth model blue otherwise red
-            tmp_colors = ['red', 'blue']
-            tmp_bool = ground_truths_data is not None
-            tmp_color = tmp_colors[int(tmp_bool)]
             
             if model_gt == 'weibull_cdf' or model_gt == 'weibull_cdf2' or model_gt == 'weibull_cdf_concave':
                 b = ground_truths_parameters[i, 1] * bf.weibull_cdf(t = t_s,
@@ -1060,7 +1068,7 @@ def model_plot(posterior_samples = None,
         if model_gt is not None:
             for k in range(len(ax_titles)):
                 title_tmp += ax_titles[k] + ': '
-                title_tmp += str(round(ground_truths_parameters[i, k], 2)) + ', ' 
+                title_tmp += str(round(ground_truths_parameters[i, k], 2)) + ', '
 
         if rows > 1 and cols > 1:
             if row_tmp == rows:
@@ -1077,7 +1085,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[row_tmp, col_tmp].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                if show_model:
+                    ax[row_tmp, col_tmp].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
                 ax[row_tmp, col_tmp].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
         
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
@@ -1095,7 +1104,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax[i].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                if show_model:
+                    ax[i].axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
                 ax[i].axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
         
         else:
@@ -1113,7 +1123,8 @@ def model_plot(posterior_samples = None,
 
             # Some extra styling:
             if model_gt is not None:
-                ax.axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
+                if show_model:
+                    ax.axvline(x = ground_truths_parameters[i, 3], ymin = -2, ymax = 2, c = tmp_color, linestyle = '--')
                 ax.axhline(y = 0, xmin = 0, xmax = ground_truths_parameters[i, 3] / max_t, c = tmp_color,  linestyle = '--')
 
     if rows > 1 and cols > 1:
@@ -1545,7 +1556,7 @@ def posterior_pair_plot(posterior_samples = [],
                      diag_sharey = False)
     g = g.map_diag(sns.kdeplot, color = 'black', shade = False) # shade = True, 
     g = g.map_lower(sns.kdeplot, 
-                    shade_lowest = False,
+                    thresh = 0.01,
                     n_levels = 50,
                     shade = False,
                     cmap = 'Purples_d') # 'Greys'
