@@ -313,7 +313,7 @@ def simulator_covariate(dependent_params = ['v'],
     
     # TD: Be more clever about covariate magnitude (maybe supply?)
     tmp_covariate_by_sample = np.random.uniform(low = - 1.0, high = 1.0, size = n_samples)
-    for covariate in covariate_params:
+    for covariate in dependent_params:
         id_tmp = config[model]['params'].index(covariate)
         param_base[:, id_tmp] = param_base[:, id_tmp] + (beta * tmp_covariate_by_sample)
     
