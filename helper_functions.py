@@ -8,6 +8,7 @@ import pickle
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import truncnorm
 import matplotlib
+from copy import deepcopy
 
 
 sys.path.append('simulators')
@@ -111,6 +112,38 @@ def bin_simulator_output(out = [0, 0],
         cnt += 1
     return counts
 
+def bin_simulator_output_pointwise(out = [0, 0],
+                                   bin_dt = 0.04,
+                                   nbins = 0): # ['v', 'a', 'w', 'ndt', 'angle']
+    out_copy = deepcopy(out)
+
+    # Generate bins
+    if nbins == 0:
+        nbins = int(out[2]['max_t'] / bin_dt)
+        bins = np.zeros(nbins + 1)
+        bins[:nbins] = np.linspace(0, out[2]['max_t'], nbins)
+        bins[nbins] = np.inf
+    else:  
+        bins = np.zeros(nbins + 1)
+        bins[:nbins] = np.linspace(0, out[2]['max_t'], nbins)
+        bins[nbins] = np.inf
+
+    cnt = 0
+    counts = np.zeros( (nbins, len(out[2]['possible_choices']) ) )
+    
+    #data_out = pd.DataFrame(np.zeros(( columns = ['rt', 'response'])
+    out_copy_tmp = deepcopy(out_copy)
+    for i in range(out_copy[0].shape[0]):
+        for j in range(1, bins.shape[0], 1):
+            if out_copy[0][i] > bins[j - 1] and out_copy[0][i] < bins[j]:
+                out_copy_tmp[0][i] = j - 1
+    out_copy = out_copy_tmp
+    #np.array(out_copy[0] / (bins[1] - bins[0])).astype(np.int32)
+    
+    out_copy[1][out_copy[1] == -1] = 0
+    
+    return np.concatenate([out_copy[0], out_copy[1]], axis = -1).astype(np.int32)
+
 def make_parameter_sets(model = 'weibull_cdf',
                         param_dict = None,
                         n_parameter_sets = 10):
@@ -155,7 +188,9 @@ def make_parameter_sets(model = 'weibull_cdf',
 def simulator(theta, 
               model = 'angle', 
               n_samples = 1000,
-              bin_dim = None):
+              bin_dim = None,
+              max_t = 20.0,
+              bin_pointwise = True):
     
     # Useful for sbi
     if type(theta) == list or type(theta) == np.ndarray:
@@ -169,6 +204,7 @@ def simulator(theta,
                           w = theta[2], 
                           ndt = theta[3], 
                           n_samples = n_samples,
+                          max_t = max_t,
                           boundary_multiplicative = True,
                           boundary_params = {},
                           boundary_fun = bf.constant)
@@ -182,7 +218,8 @@ def simulator(theta,
                           boundary_fun = bf.angle, 
                           boundary_multiplicative = False,
                           boundary_params = {'theta': theta[4]}, 
-                          n_samples = n_samples)
+                          n_samples = n_samples,
+                          max_t = max_t)
     
     if model == 'weibull_cdf' or model == 'weibull_cdf_concave' or model == 'weibull_cdf2':
         x = ddm_flexbound(v = theta[0], 
@@ -192,7 +229,8 @@ def simulator(theta,
                           boundary_fun = bf.weibull_cdf, 
                           boundary_multiplicative = True, 
                           boundary_params = {'alpha': theta[4], 'beta': theta[5]}, 
-                          n_samples = n_samples)
+                          n_samples = n_samples,
+                          max_t = max_t)
     
     if model == 'levy':
         x = levy_flexbound(v = theta[0], 
@@ -203,7 +241,8 @@ def simulator(theta,
                            boundary_fun = bf.constant, 
                            boundary_multiplicative = True, 
                            boundary_params = {}, 
-                           n_samples = n_samples)
+                           n_samples = n_samples,
+                           max_t = max_t)
     
     if model == 'full_ddm':
         x = full_ddm(v = theta[0],
@@ -216,7 +255,8 @@ def simulator(theta,
                      boundary_fun = bf.constant, 
                      boundary_multiplicative = True, 
                      boundary_params = {}, 
-                     n_samples = n_samples)
+                     n_samples = n_samples,
+                     max_t = max_t)
 
     if model == 'ddm_sdv':
         x = ddm_sdv(v = theta[0], 
@@ -227,7 +267,8 @@ def simulator(theta,
                     boundary_fun = bf.constant,
                     boundary_multiplicative = True, 
                     boundary_params = {},
-                    n_samples = n_samples)
+                    n_samples = n_samples,
+                    max_t = max_t)
         
     if model == 'ornstein':
         x = ornstein_uhlenbeck(v = theta[0], 
@@ -238,7 +279,8 @@ def simulator(theta,
                                boundary_fun = bf.constant,
                                boundary_multiplicative = True,
                                boundary_params = {},
-                               n_samples = n_samples)
+                               n_samples = n_samples,
+                               max_t = max_t)
 
     if model == 'pre':
         x = ddm_flexbound_pre(v = theta[0], 
@@ -248,11 +290,16 @@ def simulator(theta,
                               boundary_fun = bf.angle,
                               boundary_multiplicative = False,
                               boundary_params = {'theta': theta[4]},
-                              n_samples = n_samples)
+                              n_samples = n_samples,
+                              max_t = max_t)
     if bin_dim == None:
         return x
     else:
-        return bin_simulator_output(x, nbins = bin_dim).flatten()
+        if bin_pointwise:
+            binned_out = bin_simulator_output_pointwise(x, nbins = bin_dim)
+            return (np.expand_dims(binned_out[:,0], axis = 1), np.expand_dims(binned_out[:, 1], axis = 1), x[2])
+        else:
+            return bin_simulator_output(x, nbins = bin_dim).flatten()
     
 def simulator_stimcoding(model = 'angle',
                          split_by = 'v',

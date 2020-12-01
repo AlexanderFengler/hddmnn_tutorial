@@ -5,7 +5,8 @@ Welcome to the **HDDMNN Tutorial**. Execute the instructions below to follow the
 
 ### Installation instructions:
 
-1. Open any dummy colab notebook from your google account
+
+1. Open an empty *google colab notebook* (e.g. go to colab.research.google.com and click on **new notebook**)
 
 2. `from google.colab import drive; 
 drive.mount('/content/gdrive')`
