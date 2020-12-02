@@ -61,12 +61,12 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
          }
 
 hddm_include_config = {'angle': ['z', 'theta'],
-                  'weibull_cdf':['z', 'alpha', 'beta'],
-                  'full_ddm': ['z', 'st', 'sv', 'sz'],
-                  'levy': ['z', 'alpha'],
-                  'ornstein': ['z', 'g'],
-                  'ddm_sdv': ['z', 'sv'],
-                  'ddm': ['z']}
+                       'weibull_cdf':['z', 'alpha', 'beta'],
+                       'full_ddm': ['z', 'st', 'sv', 'sz'],
+                       'levy': ['z', 'alpha'],
+                       'ornstein': ['z', 'g'],
+                       'ddm_sdv': ['z', 'sv'],
+                       'ddm': ['z']}
 
 # DATA SIMULATION ------------------------------------------------------------------------------
 def str_to_num(string = '', n_digits = 3):
@@ -88,6 +88,19 @@ def num_to_str(num = 0, n_digits = 3):
     if num != 0:
         new_str += str(num)
     return new_str
+
+def _pad_subj_id(in_str):
+    # Make subj ids have three digits by prepending 0s if necessary
+    stridx = in_str.find('.') # get index of 'subj.' substring
+    subj_idx_len = len(in_str[(stridx + len('.')):]) # check how many letters remain after 'subj.' is enocuntered
+    out_str = ''
+    prefix_str = ''
+    for i in range(3 - subj_idx_len):
+        prefix_str += '0' # add zeros to pad subject id to have three digits
+
+    out_str = in_str[:stridx + len('.')] + prefix_str + in_str[stridx + len('.'):] #   
+    # print(out_str)
+    return out_str
 
 def bin_simulator_output(out = [0, 0],
                          bin_dt = 0.04,
@@ -505,20 +518,27 @@ def _make_trace_plotready_hierarchical(hddm_trace = None, model = ''):
     subj_l = []
     for key in hddm_trace.keys():
         if '_subj' in key:
-            subj_l.append(str_to_num(key[-3:]))
+            new_key = _pad_subj_id(key)
+            #print(new_key)
+            #new_key = key
+            subj_l.append(str_to_num(new_key[-3:]))
             #subj_l.append(int(float(key[-3:])))
 
     dat = np.zeros((max((subj_l)) + 1, hddm_trace.shape[0], len(config[model]['params'])))
     for key in hddm_trace.keys():
         if '_subj' in key:
-            id_tmp = str_to_num(key[-3:]) #int(float(key[-3:]))
+            new_key = _pad_subj_id(key)
+            #print(new_key)
+            # new_key = key
+            
+            id_tmp = str_to_num(new_key[-3:]) #int(float(key[-3:])) # convert padded key from string to a number
             if '_trans' in key:
                 val_tmp = 1 / ( 1 + np.exp(- hddm_trace[key]))
             else:
                 val_tmp = hddm_trace[key]
             dat[id_tmp, : , config[model]['params'].index(key[:key.find('_')])] = val_tmp   
             
-    return dat
+    return dat 
 
 def _make_trace_plotready_condition(hddm_trace = None, model = ''):
     
@@ -564,6 +584,7 @@ def model_plot(posterior_samples = None,
                max_t = 5,
                input_hddm_trace = False,
                datatype = 'single_subject', # 'hierarchical', 'single_subject', 'condition'
+               condition_column = 'condition',
                show_model = True,
                ylimit = 2,
                posterior_linewidth = 3,
@@ -573,16 +594,26 @@ def model_plot(posterior_samples = None,
                save = False):
     
     if save == True:
-        matplotlib.rcParams['text.usetex'] = True
+        pass
+        # matplotlib.rcParams['text.usetex'] = True
         #matplotlib.rcParams['pdf.fonttype'] = 42
-        matplotlib.rcParams['svg.fonttype'] = 'none'
+        # matplotlib.rcParams['svg.fonttype'] = 'none'
 
+    # In case we don't fit 'z' we set it to 0.5 here for purposes of plotting 
+    if posterior_samples is not None:
+        z_cnt  = 0
+        for ps_idx in posterior_samples.keys():
+            if 'z' in ps_idx:
+                z_cnt += 1
+        if z_cnt < 1:
+            posterior_samples['z_trans'] = 0.0
+            
     # Inputs are hddm_traces --> make plot ready
     if input_hddm_trace and posterior_samples is not None:
         if datatype == 'hierarchical':
             posterior_samples = _make_trace_plotready_hierarchical(posterior_samples, 
                                                                    model = model_fitted)
-            print(posterior_samples.shape)
+            #print(posterior_samples.shape)
             n_plots = posterior_samples.shape[0]
 #             print(posterior_samples)
             
@@ -609,7 +640,10 @@ def model_plot(posterior_samples = None,
         if posterior_samples is not None:
             posterior_samples = np.expand_dims(posterior_samples, 0)
         if ground_truths_data is not None:
-            ground_truths_data = np.expand_dims(ground_truths_data, 0)
+            gt_dat_dict = dict()
+            gt_dat_dict[0] = ground_truths_data
+            ground_truths_data = gt_dat_dict
+            #ground_truths_data = np.expand_dims(ground_truths_data, 0)
             
     plot_titles = {'ddm': 'DDM', 
                    'angle': 'ANGLE',
@@ -629,15 +663,30 @@ def model_plot(posterior_samples = None,
         ax_titles = ''
         
     if ground_truths_data is not None and datatype == 'condition':
-        gt_tmp = np.zeros((n_plots, int(ground_truths_data.values.shape[0] / n_plots), 2))
+        ####
+        gt_dat_dict = dict()
+        for i in np.sort(np.unique(ground_truths_data[condition_column])):
+            gt_dat_dict[i] = ground_truths_data.loc[ground_truths_data[condition_column] == i][['rt', 'response']]
+            gt_dat_dict[i].loc[gt_dat_dict[i]['response'] == 0,  'response'] = - 1
+            gt_dat_dict[i] = gt_dat_dict[i].values
+        ground_truths_data = gt_dat_dict
         
-        for i in np.unique(ground_truths_data['condition']):
-            gt_tmp[i, :, :] = ground_truths_data.loc[ground_truths_data['condition'] == i][['rt', 'nn_response']].values
         
-        ground_truths_data = gt_tmp
+#         gt_tmp = np.zeros((n_plots, int(ground_truths_data.values.shape[0] / n_plots), 2))
+        
+#         for i in np.unique(ground_truths_data['condition']):
+#             gt_tmp[i, :, :] = ground_truths_data.loc[ground_truths_data['condition'] == i][['rt', 'nn_response']].values
+        
+#         ground_truths_data = gt_tmp
         
     if ground_truths_data is not None and datatype == 'hierarchical':
-        print('Supplying ground truth data not yet implemented for hierarchical datasets')
+        gt_dat_dict = dict()
+        for i in np.sort(np.unique(ground_truths_data['subj_idx'])):
+            gt_dat_dict[i] = ground_truths_data.loc[ground_truths_data['subj_idx'] == i][['rt', 'response']]
+            gt_dat_dict[i].loc[gt_dat_dict[i]['response'] == 0,  'response'] = - 1
+            gt_dat_dict[i] = gt_dat_dict[i].values
+        ground_truths_data = gt_dat_dict
+        # print('Supplying ground truth data not yet implemented for hierarchical datasets')
 
     rows = int(np.ceil(n_plots / cols))
 
@@ -743,7 +792,6 @@ def model_plot(posterior_samples = None,
                             linewidth = hist_linewidth,
                             zorder = -1)
                         
-        
         if model_gt is not None and ground_truths_data is None:
 #             counts, bins = np.histogram(tmp_true[tmp_true[:, 1] == 1, 0],
 #                                     bins = np.linspace(0, max_t, 100))
@@ -776,11 +824,20 @@ def model_plot(posterior_samples = None,
                         linewidth = hist_linewidth)
         
         if ground_truths_data is not None:
-            counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == 1, 0],
-                                          bins = np.linspace(0, max_t, nbins),
-                                          density = True)
-            
-            choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
+            # This splits here is neither elegant nor necessary --> can represent ground_truths_data simply as a dict !
+            # Wiser because either way we can have varying numbers of trials for each subject !
+            if datatype == 'hierarchical' or datatype == 'condition' or datatype == 'single_subject':
+                counts_2, bins = np.histogram(ground_truths_data[i][ground_truths_data[i][:, 1] == 1, 0],
+                                              bins = np.linspace(0, max_t, nbins),
+                                              density = True)
+
+                choice_p_up_true_dat = np.sum(ground_truths_data[i][:, 1] == 1) / ground_truths_data[i].shape[0]
+            else:
+                counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == 1, 0],
+                                              bins = np.linspace(0, max_t, nbins),
+                                              density = True)
+
+                choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
 
             
             if row_tmp == 0 and col_tmp == 0:
@@ -856,13 +913,17 @@ def model_plot(posterior_samples = None,
         # -- new stuff
         
         if ground_truths_data is not None:
-            counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == - 1, 0],
-                                          bins = np.linspace(0, max_t, nbins),
-                                          density = True)
+            if datatype == 'hierarchical' or datatype == 'condition' or datatype == 'single_subject':
+                counts_2, bins = np.histogram(ground_truths_data[i][ground_truths_data[i][:, 1] == - 1, 0],
+                                              bins = np.linspace(0, max_t, nbins),
+                                              density = True)
+            else:
+                counts_2, bins = np.histogram(ground_truths_data[i, ground_truths_data[i, :, 1] == - 1, 0],
+                                              bins = np.linspace(0, max_t, nbins),
+                                              density = True)
             
             #choice_p_up_true_dat = np.sum(ground_truths_data[i, :, 1] == 1) / ground_truths_data[i].shape[0]
 
-            
             ax_tmp.hist(bins[:-1], 
                         bins, 
                         weights = (1 - choice_p_up_true_dat) * counts_2,
@@ -1183,8 +1244,8 @@ def model_plot(posterior_samples = None,
     plt.tight_layout(rect = [0, 0.03, 1, 0.9])
     
     if save == True:
-        plt.savefig('figures/' + 'hierarchical_model_plot_' + model_gt + '_' + datatype + '.svg',
-                    format = 'svg', 
+        plt.savefig('figures/' + 'hierarchical_model_plot_' + model_gt + '_' + datatype + '.png',
+                    format = 'png', 
                     transparent = True,
                     frameon = False)
         plt.close()
@@ -1200,6 +1261,7 @@ def posterior_predictive_plot(posterior_samples = None,
                               model_fitted = 'angle',
                               model_gt = 'angle',
                               datatype = 'single_subject',
+                              condition_column = 'condition',
                               input_hddm_trace = True,
                               n_post_params = 100,
                               max_t = 20,
@@ -1221,6 +1283,27 @@ def posterior_predictive_plot(posterior_samples = None,
     
     if model_gt is None and ground_truths_data is None and posterior_samples is None:
         return 'No ground truth model was supplied, no dataset was supplied and no posterior sample was supplied. Nothin to plot' 
+    
+    
+    # Take care of ground_truths_data
+    if ground_truths_data is not None and datatype == 'hierarchical':
+        gt_dat_dict = dict()
+        for i in np.sort(np.unique(ground_truths_data['subj_idx'])):
+            gt_dat_dict[i] = ground_truths_data.loc[ground_truths_data['subj_idx'] == i][['rt', 'response']]
+            gt_dat_dict[i].loc[gt_dat_dict[i]['response'] == 0,  'response'] = - 1
+            gt_dat_dict[i] = gt_dat_dict[i].values
+        ground_truths_data = gt_dat_dict
+        # print('Supplying ground truth data not yet implemented for hierarchical datasets')
+        
+    if ground_truths_data is not None and datatype == 'condition':
+        gt_dat_dict = dict()
+        for i in np.sort(np.unique(ground_truths_data[condition_column])):
+            gt_dat_dict[i] = ground_truths_data.loc[ground_truths_data[condition_column] == i][['rt', 'response']]
+            gt_dat_dict[i].loc[gt_dat_dict[i]['response'] == 0,  'response'] = - 1
+            gt_dat_dict[i] = gt_dat_dict[i].values
+        ground_truths_data = gt_dat_dict
+
+    
     
     # Inputs are hddm_traces --> make plot ready
     if input_hddm_trace and posterior_samples is not None:
@@ -1311,82 +1394,81 @@ def posterior_predictive_plot(posterior_samples = None,
             gt_color = 'blue'
         
         if rows > 1 and cols > 1:
+            ax[row_tmp, col_tmp].hist(post_tmp[:, 0] * post_tmp[:, 1], 
+                                      bins = np.linspace(-max_t, max_t, nbins), #50, # kde = False, # rug = False, 
+                                      alpha =  1, 
+                                      color = 'black',
+                                      histtype = 'step', 
+                                      density = 1, 
+                                      edgecolor = 'black',
+                                      linewidth = hist_linewidth
+                                     )
             
-            sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False, 
-                         rug = False, 
-                         hist_kws = {'alpha': 1, 
-                                     'color': 'black',
-                                     'histtype': 'step', 
-                                     'density': 1, 
-                                     'edgecolor': 'black',
-                                     'linewidth': hist_linewidth},
-                         ax = ax[row_tmp, col_tmp]);
+#             sns.histplot(post_tmp[:, 0] * post_tmp[:, 1], 
+#                          bins = np.linspace(-max_t, max_t, nbins), #50, 
+#                          kde = False, # rug = False, 
+#                          hist_kws = {'alpha': 1, 
+#                                      'color': 'black',
+#                                      'histtype': 'step', 
+#                                      'density': 1, 
+#                                      'edgecolor': 'black',
+#                                      'linewidth': hist_linewidth},
+#                          ax = ax[row_tmp, col_tmp]);
 
-            sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
-                         hist_kws = {'alpha': 0.5, 
-                                     'color': gt_color, 
-                                     'density': 1, 
-                                     'edgecolor': gt_color,  
-                                     'histtype': 'step',
-                                     'linewidth': hist_linewidth}, 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False, 
-                         rug = False,
-                         ax = ax[row_tmp, col_tmp])
+            ax[row_tmp, col_tmp].hist(gt_tmp[:, 0] * gt_tmp[:, 1], 
+                                      alpha = 0.5, 
+                                      color = gt_color, 
+                                      density = 1, 
+                                      edgecolor = gt_color,  
+                                      histtype = 'step',
+                                      linewidth = hist_linewidth, 
+                                      bins = np.linspace(-max_t, max_t, nbins), #50, 
+                                      # kde = False, #rug = False,
+                                      )
             
         elif (rows == 1 and cols > 1) or (rows > 1 and cols == 1):
             
-            sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False, 
-                         rug = False, 
-                         hist_kws = {'alpha': 1, 
-                                     'color': 'black',
-                                     'histtype': 'step', 
-                                     'density': 1, 
-                                     'edgecolor': 'black',
-                                     'linewidth': hist_linewidth},
-                         ax = ax[i]);
+            ax[i].hist(post_tmp[:, 0] * post_tmp[:, 1], 
+                       bins = np.linspace(-max_t, max_t, nbins), #50, # kde = False, #rug = False, 
+                       alpha = 1, 
+                       color = 'black',
+                       histtype = 'step', 
+                       density = 1, 
+                       edgecolor = 'black',
+                       linewidth = hist_linewidth
+                       )
 
-            sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
-                         hist_kws = {'alpha': 0.5, 
-                                     'color': gt_color, 
-                                     'density': 1, 
-                                     'edgecolor': gt_color, 
-                                     'histtype': 'step',
-                                     'linewidth': hist_linewidth}, 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False, 
-                         rug = False,
-                         ax = ax[i])
+            ax[i].hist(gt_tmp[:, 0] * gt_tmp[:, 1], 
+                       alpha = 0.5, 
+                       color = gt_color, 
+                       density = 1, 
+                       edgecolor = gt_color, 
+                       histtype = 'step',
+                       linewidth = hist_linewidth, 
+                       bins = np.linspace(-max_t, max_t, nbins), #50, # kde = False, #rug = False,
+                       )
             
         else:
             
-            sns.distplot(post_tmp[:, 0] * post_tmp[:, 1], 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False,
-                         rug = False,
-                         hist_kws = {'alpha': 1, 
-                                     'color': 'black', 
-                                     'histtype': 'step', 
-                                     'density': 1, 
-                                     'edgecolor': 'black',
-                                     'linewidth': hist_linewidth},
-                         ax = ax);
+            ax.hist(post_tmp[:, 0] * post_tmp[:, 1], 
+                    bins = np.linspace(-max_t, max_t, nbins), #50, # kde = False, #rug = False,
+                    alpha = 1, 
+                    color = 'black', 
+                    histtype = 'step', 
+                    density = 1, 
+                    edgecolor = 'black',
+                    linewidth = hist_linewidth,
+                    );
             
-            sns.distplot(gt_tmp[:, 0] * gt_tmp[:, 1], 
-                         hist_kws = {'alpha': 0.5, 
-                                     'color': gt_color, 
-                                     'density': 1,
-                                     'edgecolor': gt_color,  
-                                     'histtype':'step',
-                                     'linewidth': hist_linewidth}, 
-                         bins = np.linspace(-max_t, max_t, nbins), #50, 
-                         kde = False, 
-                         rug = False,
-                         ax = ax)
+            ax.hist(gt_tmp[:, 0] * gt_tmp[:, 1], 
+                    alpha = 0.5, 
+                    color = gt_color, 
+                    density = 1,
+                    edgecolor = gt_color,  
+                    histtype = 'step',
+                    linewidth = hist_linewidth, 
+                    bins = np.linspace(-max_t, max_t, nbins), #50, # kde = False, #rug = False,
+                    );
         
 #         if rows > 1 and cols > 1:
 #             ax[row_tmp, col_tmp].set_xlim(0, max_t)
@@ -1426,7 +1508,7 @@ def posterior_predictive_plot(posterior_samples = None,
 #                                             fontsize = 14);
         
         if col_tmp == 0:
-            tmp_ax.set_ylabel('Density', 
+            tmp_ax.set_ylabel('', 
                                             fontsize = 24);
 #             ax[row_tmp, col_tmp].set_ylabel('Density', 
 #                                             fontsize = 14);
