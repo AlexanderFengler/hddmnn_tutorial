@@ -51,7 +51,9 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
           'full_ddm':{'params':['v', 'a', 'z', 't', 'sz', 'sv', 'st'],
                       'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 1.7, 0.25, 1.7, 0.2]]
                      },
-          
+          'full_ddm2':{'params':['v', 'a', 'z', 't', 'sz', 'sv', 'st'],
+                       'param_bounds':[[-2, 0.5, 0.35, 0.3, 0.05, 0.0, 0.05], [2, 2.2, 0.65, 1.7, 0.25, 1.7, 0.2]]
+                      },
           'ornstein':{'params':['v', 'a', 'z', 'g', 't'],
                       'param_bounds':[[-1.9, 0.4, 0.25, -0.9, 0.1], [1.9, 1.9, 0.75, 0.9, 1.9]]
                      },
@@ -63,6 +65,7 @@ config = {'ddm': {'params':['v', 'a', 'z', 't'],
 hddm_include_config = {'angle': ['z', 'theta'],
                        'weibull_cdf':['z', 'alpha', 'beta'],
                        'full_ddm': ['z', 'st', 'sv', 'sz'],
+                       'full_ddm2': ['z', 'st', 'sv', 'sz'],
                        'levy': ['z', 'alpha'],
                        'ornstein': ['z', 'g'],
                        'ddm_sdv': ['z', 'sv'],
@@ -257,7 +260,7 @@ def simulator(theta,
                            n_samples = n_samples,
                            max_t = max_t)
     
-    if model == 'full_ddm':
+    if model == 'full_ddm' or model == 'full_ddm2':
         x = full_ddm(v = theta[0],
                      a = theta[1], 
                      w = theta[2], 
