@@ -1698,7 +1698,7 @@ def posterior_pair_plot(posterior_samples = [],
     
     
     if axes_limits == 'model':
-        xlabels,ylabels = [],[]
+        xlabels, ylabels = [], []
 
         for ax in g.axes[-1, :]:
             xlabel = ax.xaxis.get_label_text()
@@ -1734,7 +1734,7 @@ def posterior_pair_plot(posterior_samples = [],
                                  markersize = 10)
 
         for i in range(g.axes.shape[0]):
-            g.axes[i,i].plot(ground_truths[i],
+            g.axes[i,i].plot(ground_truths[config[model]['params'].index(xlabels[i])],
                              g.axes[i,i].get_ylim()[0], 
                              '.', 
                              color = 'red',
