@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/Users/afengler/opt/miniconda3/envs/hddmnn_tutorial/bin/python"
+    "python.pythonPath": "/Users/afengler/opt/miniconda3/envs/hddmnn_tutorial/bin/python",
+    "jupyter.jupyterServerType": "local"
 }
