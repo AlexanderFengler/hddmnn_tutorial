@@ -1,2 +1,4 @@
 __pycache__/
 figures/
+.vscode
+configs/__pycache__
