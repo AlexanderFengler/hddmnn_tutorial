@@ -1,5 +1,5 @@
-__pycache__/
+#__pycache__/
 figures/
-.vscode
+#.vscode
 configs/__pycache__
-.ipynb_checkpoints/
+#.ipynb_checkpoints/
