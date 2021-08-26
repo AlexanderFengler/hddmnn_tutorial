@@ -1,5 +1,7 @@
 #__pycache__/
 figures/
+build/
+data/
 #.vscode
 configs/__pycache__
 #.ipynb_checkpoints/
