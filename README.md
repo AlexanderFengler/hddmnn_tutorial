@@ -1,24 +1,14 @@
-# hddmnn_tutorial
+# HDDM-LAN(nn) Tutorial
 
 Welcome to the **HDDMNN Tutorial**. Execute the instructions below to follow the tutorial in your own *google colab notebook*.
 **Slides** for the *theory part* are in the file *hddm_nn_tutorial_slides.pdf*. 
 
-### Installation instructions:
+## NOTE:
 
+This git repo is now deprecated. Please find the tutorial in the [main HDDM repository](https://github.com/hddm-devs/hddm/tree/master/hddm/examples), in the `lan_tutorial.ipynb`. (Below instruction link to the main **HDDM** repository
 
-1. Open an empty *google colab notebook* (e.g. go to colab.research.google.com and click on **new notebook**)
+## RUN THE TUTORIAL
 
-2. `from google.colab import drive; 
-drive.mount('/content/gdrive')`
+To directly run the tutorial (from the main repository) in a **google colab notebook**, please click [this link](https://githubtocolab.com/hddm-devs/hddm/tree/master/hddm/examples/lan_tutorial.ipynb). 
 
-3. `%cd gdrive/'My Drive'/`
-
-4. `!git clone https://github.com/AlexanderFengler/hddmnn_tutorial`
-
-5. Close this *colab* and navigate to the *hddmnn_tutorial* folder in your *google drive*.
-
-6. Select the file *hddmnn_tutorial.ipynb* and run it in a new *colab notebook*
-
-7. In the *upper left* menu click on **Runtime**, then **Change runtime type** and select **GPU** as **hardware accelerator**
-
-You are ready to follow the tutorial now... 
+Otherwise you can of course simply clone the [HDDM repository](https://github.com/hddm-devs/hddm/tree/master) and access the tutorial directly from the **examples** folder on your local machine. (Note that installation of all necessary python packages can be tricky, depending on your local setup)
