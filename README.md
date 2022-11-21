@@ -16,5 +16,7 @@ After an initial discussion of HDDM features we will illustrate some end-to-end 
 1. Going from simulators to inference with HDDM using LANs: [click here](https://githubtocolab.com/hddm-devs/hddm/blob/master/hddm/examples/lan_to_hddm_end_to_end.ipynb)
 2. Going from simulators to inference with HDDM using MNLEs: [click here](https://githubtocolab.com/hddm-devs/hddm/blob/master/hddm/examples/mnle_to_hddm_end_to_end.ipynb)
 
+We recommend you to check [this basic HDDM](https://githubtocolab.com/hddm-devs/hddm/blob/master/hddm/examples/hddm_basic_workshop.ipynb tutorial as well (however we will probably not get to it during our workshop).
+
 ## RUN THE TUTORIAL (via main repo)
 Otherwise you can also simply clone the [HDDM repository](https://github.com/hddm-devs/hddm/tree/master) and access the tutorials directly from the **examples** folder on your local machine. (Note that installation of all necessary python packages can be tricky, depending on your local setup.)
